@@ -1,0 +1,169 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "De'Corrinna API",
+        "description": "REST API backend De'Corrinna (Laravel 12 + PostgreSQL). Autentikasi memakai Bearer token (Laravel Sanctum).",
+        "contact": {
+            "name": "Tim Azatech",
+            "email": "dev@azatech.id"
+        },
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "http://localhost:8000",
+            "description": "Server lokal (dev)"
+        }
+    ],
+    "paths": {
+        "/api/health": {
+            "get": {
+                "tags": [
+                    "System"
+                ],
+                "summary": "Health check API",
+                "description": "Mengecek API hidup dan koneksi database. Tidak butuh autentikasi.",
+                "operationId": "86f59596b50693fd899d11bc931d8060",
+                "responses": {
+                    "200": {
+                        "description": "API sehat",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/SuccessResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "properties": {
+                                                        "service": {
+                                                            "type": "string",
+                                                            "example": "De'Corrinna API"
+                                                        },
+                                                        "status": {
+                                                            "type": "string",
+                                                            "example": "up"
+                                                        },
+                                                        "database": {
+                                                            "type": "string",
+                                                            "example": "ok"
+                                                        },
+                                                        "time": {
+                                                            "type": "string",
+                                                            "format": "date-time",
+                                                            "example": "2026-08-27T01:45:18+00:00"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "ErrorResponse": {
+                "title": "ErrorResponse",
+                "description": "Envelope response error standar.",
+                "properties": {
+                    "success": {
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Terjadi kesalahan."
+                    },
+                    "errors": {
+                        "description": "Peta field -> daftar pesan (hanya untuk error validasi).",
+                        "type": "object",
+                        "example": {
+                            "email": [
+                                "Email wajib diisi."
+                            ]
+                        },
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "PaginationMeta": {
+                "title": "PaginationMeta",
+                "description": "Meta pagination standar untuk response terpaginasi.",
+                "properties": {
+                    "current_page": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "per_page": {
+                        "type": "integer",
+                        "example": 15
+                    },
+                    "total": {
+                        "type": "integer",
+                        "example": 42
+                    },
+                    "last_page": {
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "from": {
+                        "type": "integer",
+                        "example": 1,
+                        "nullable": true
+                    },
+                    "to": {
+                        "type": "integer",
+                        "example": 15,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "SuccessResponse": {
+                "title": "SuccessResponse",
+                "description": "Envelope response sukses standar.",
+                "properties": {
+                    "success": {
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "OK"
+                    },
+                    "data": {
+                        "type": "object",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "description": "Token pribadi dari Laravel Sanctum. Kirim sebagai header: Authorization: Bearer {token}",
+                "bearerFormat": "Sanctum",
+                "scheme": "bearer"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "System",
+            "description": "Health check & status sistem"
+        }
+    ]
+}
