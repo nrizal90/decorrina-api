@@ -16,6 +16,336 @@
         }
     ],
     "paths": {
+        "/api/auth/register": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Registrasi akun customer",
+                "description": "Registrasi publik. Akun yang dibuat SELALU berrole `customer` dengan `tenant_id` NULL. Akun staff/admin dibuat lewat manajemen user (B13), bukan endpoint ini. Token Sanctum langsung diterbitkan sehingga FE tidak perlu login ulang.",
+                "operationId": "c7bb21a0d87049e161b8e4c9b0d909f2",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name",
+                                    "email",
+                                    "password",
+                                    "password_confirmation"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "Budi Santoso",
+                                        "maxLength": 255
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "budi@example.com",
+                                        "maxLength": 255
+                                    },
+                                    "password": {
+                                        "description": "Mengikuti Password::defaults() Laravel (minimal 8 karakter).",
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "rahasia123"
+                                    },
+                                    "password_confirmation": {
+                                        "description": "Wajib sama dengan `password` (rule `confirmed`).",
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "rahasia123"
+                                    },
+                                    "device_name": {
+                                        "description": "Label token, muncul di daftar perangkat. Default `spa`.",
+                                        "type": "string",
+                                        "example": "spa",
+                                        "maxLength": 255
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Registrasi berhasil",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/SuccessResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "example": "Registrasi berhasil"
+                                                },
+                                                "data": {
+                                                    "properties": {
+                                                        "token": {
+                                                            "type": "string",
+                                                            "example": "3|kR7pQx2LmN..."
+                                                        },
+                                                        "user": {
+                                                            "$ref": "#/components/schemas/User"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validasi gagal (mis. email sudah terpakai, konfirmasi password tidak cocok)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/login": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Login & terbitkan token",
+                "description": "Memverifikasi kredensial lalu menerbitkan token Sanctum baru. Setiap login membuat token baru (login multi-perangkat diperbolehkan) — bedakan lewat `device_name`. Pesan error sengaja generik agar tidak membocorkan email mana yang terdaftar.",
+                "operationId": "dd51a484b7fa0f97c7680fdbde14cf5f",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "budi@example.com"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "rahasia123"
+                                    },
+                                    "device_name": {
+                                        "description": "Label token. Default `spa`.",
+                                        "type": "string",
+                                        "example": "spa",
+                                        "maxLength": 255
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Login berhasil",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/SuccessResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "example": "Login berhasil"
+                                                },
+                                                "data": {
+                                                    "properties": {
+                                                        "token": {
+                                                            "description": "Kirim di header `Authorization: Bearer {token}`.",
+                                                            "type": "string",
+                                                            "example": "4|aB9zXy1QwE..."
+                                                        },
+                                                        "user": {
+                                                            "$ref": "#/components/schemas/User"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Kredensial salah",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ErrorResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "example": "Email atau password salah."
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validasi gagal (email/password kosong atau format email salah)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/logout": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Logout (cabut token aktif)",
+                "description": "Menghapus HANYA token yang dipakai request ini. Token perangkat lain tetap berlaku.",
+                "operationId": "df9bdc6c7a6d9f20b983526b2ec0f698",
+                "responses": {
+                    "200": {
+                        "description": "Logout berhasil",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/SuccessResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "example": "Logout berhasil"
+                                                },
+                                                "data": {
+                                                    "type": "object",
+                                                    "example": null,
+                                                    "nullable": true
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Token tidak ada / tidak valid",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/auth/me": {
+            "get": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Profil user terautentikasi",
+                "description": "Mengembalikan profil user beserta `roles` dan `permissions`. Dipakai FE saat boot untuk memulihkan sesi dari token tersimpan dan menyusun guard menu berdasar permission.",
+                "operationId": "b5de204f5e452ef51327c691aa99e77c",
+                "responses": {
+                    "200": {
+                        "description": "Profil user",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/SuccessResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "example": "OK"
+                                                },
+                                                "data": {
+                                                    "$ref": "#/components/schemas/User"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Token tidak ada / tidak valid",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/health": {
             "get": {
                 "tags": [
@@ -149,6 +479,56 @@
                     }
                 },
                 "type": "object"
+            },
+            "User": {
+                "title": "User",
+                "description": "Representasi user pada API. `permissions` adalah gabungan permission dari seluruh role — FE memakai ini untuk guard menu/tombol (bukan role, lihat dok 06 §9).",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Budi Santoso"
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "example": "budi@example.com"
+                    },
+                    "tenant_id": {
+                        "description": "NULL untuk akun global (Customer & Superadmin Azatech).",
+                        "type": "integer",
+                        "example": null,
+                        "nullable": true
+                    },
+                    "roles": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "customer"
+                        ]
+                    },
+                    "permissions": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "bookings:index",
+                            "bookings:store"
+                        ]
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-08-27T01:45:18.000000Z"
+                    }
+                },
+                "type": "object"
             }
         },
         "securitySchemes": {
@@ -164,6 +544,10 @@
         {
             "name": "System",
             "description": "Health check & status sistem"
+        },
+        {
+            "name": "Auth",
+            "description": "Registrasi, login, logout, profil (Fase 1)"
         }
     ]
 }

@@ -10,6 +10,10 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * Representasi user untuk API. Menyertakan `roles` & `permissions` agar FE
  * bisa guard tombol/menu BERDASAR PERMISSION (bukan role) — lihat dok 06 §9.
  *
+ * Schema OpenAPI-nya ada di App\OpenApi\Schemas\User (schema: 'User') —
+ * dipisah karena JsonResource memproksi properti lewat __get, jadi kelas ini
+ * tidak boleh mendeklarasikan properti typed sebagai pembawa atribut.
+ *
  * @mixin User
  */
 class UserResource extends JsonResource
