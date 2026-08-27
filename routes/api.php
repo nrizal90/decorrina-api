@@ -1,9 +1,14 @@
 <?php
 
+use App\Http\Controllers\Api\AddonController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\FacilityController;
 use App\Http\Controllers\Api\HealthController;
+use App\Http\Controllers\Api\ItemController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\VillaController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -33,6 +38,17 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
 });
 
 /*
+| Katalog publik (A2/A3) — tanpa auth & tanpa `rbac`.
+| Tenant TIDAK bisa diturunkan dari user di sini (pengunjung anonim, dan
+| customer yang login pun tenant_id-nya NULL), jadi dipakai `tenant.public`
+| yang membacanya dari header X-Tenant + fallback default.
+*/
+Route::middleware('tenant.public')->group(function () {
+    Route::get('/villas', [VillaController::class, 'index']);
+    Route::get('/villas/{slug}', [VillaController::class, 'show']);
+});
+
+/*
 | Route bisnis terproteksi RBAC.
 | Wajib ->name('{resource}:{action}') (fail-closed: tanpa nama → 403).
 */
@@ -47,4 +63,37 @@ Route::middleware(['auth:sanctum', 'tenant', 'rbac'])->group(function () {
     // Role & matriks permission (B13)
     Route::get('/roles', [RoleController::class, 'index'])->name('roles:index');
     Route::put('/roles/{role}/permissions', [RoleController::class, 'sync'])->name('roles:sync');
+
+    /*
+    | Master Data (B4, Fase 2) — prefix /admin sesuai dok 03.
+    | Nama route = nama permission. Aksi yang TIDAK punya permission di seeder
+    | sengaja tidak dibuat rutenya (mis. categories:show, facilities:show),
+    | karena fail-closed akan selalu menolaknya dengan 403.
+    */
+    Route::prefix('admin')->group(function () {
+        // Kategori (= villa)
+        Route::get('/categories', [CategoryController::class, 'index'])->name('categories:index');
+        Route::post('/categories', [CategoryController::class, 'store'])->name('categories:store');
+        Route::match(['put', 'patch'], '/categories/{category}', [CategoryController::class, 'update'])->name('categories:update');
+        Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])->name('categories:destroy');
+
+        // Item (kamar/paket)
+        Route::get('/items', [ItemController::class, 'index'])->name('items:index');
+        Route::post('/items', [ItemController::class, 'store'])->name('items:store');
+        Route::get('/items/{item}', [ItemController::class, 'show'])->name('items:show');
+        Route::match(['put', 'patch'], '/items/{item}', [ItemController::class, 'update'])->name('items:update');
+        Route::delete('/items/{item}', [ItemController::class, 'destroy'])->name('items:destroy');
+
+        // Fasilitas
+        Route::get('/facilities', [FacilityController::class, 'index'])->name('facilities:index');
+        Route::post('/facilities', [FacilityController::class, 'store'])->name('facilities:store');
+        Route::match(['put', 'patch'], '/facilities/{facility}', [FacilityController::class, 'update'])->name('facilities:update');
+        Route::delete('/facilities/{facility}', [FacilityController::class, 'destroy'])->name('facilities:destroy');
+
+        // Add-on
+        Route::get('/addons', [AddonController::class, 'index'])->name('addons:index');
+        Route::post('/addons', [AddonController::class, 'store'])->name('addons:store');
+        Route::match(['put', 'patch'], '/addons/{addon}', [AddonController::class, 'update'])->name('addons:update');
+        Route::delete('/addons/{addon}', [AddonController::class, 'destroy'])->name('addons:destroy');
+    });
 });

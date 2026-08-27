@@ -16,6 +16,228 @@
         }
     ],
     "paths": {
+        "/api/admin/addons": {
+            "get": {
+                "tags": [
+                    "Master Data"
+                ],
+                "summary": "Daftar add-on",
+                "operationId": "a712a2743d4d50016e81a7fdf3a0e2d4",
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "description": "Cari nama add-on.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "Aktif",
+                                "Nonaktif"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Daftar add-on",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/SuccessResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/Addon"
+                                                    }
+                                                },
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/PaginationMeta"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Tidak punya permission addons:index",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Master Data"
+                ],
+                "summary": "Tambah add-on",
+                "operationId": "aa2dfa834c4871b84bc244f2b7127dae",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AddonInput"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Add-on dibuat",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Addon"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validasi gagal",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/addons/{addon}": {
+            "put": {
+                "tags": [
+                    "Master Data"
+                ],
+                "summary": "Ubah add-on",
+                "operationId": "6436904675c6cc500a4c515123d2a50e",
+                "parameters": [
+                    {
+                        "name": "addon",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AddonInput"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Add-on diperbarui",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Addon"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Tidak ditemukan",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Master Data"
+                ],
+                "summary": "Hapus add-on",
+                "description": "Soft delete. Tautan ke kategori/item ikut dilepas.",
+                "operationId": "40360bdf1f20dc17809547555fc1890d",
+                "parameters": [
+                    {
+                        "name": "addon",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Terhapus"
+                    },
+                    "404": {
+                        "description": "Tidak ditemukan",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/auth/register": {
             "post": {
                 "tags": [
@@ -346,6 +568,421 @@
                 ]
             }
         },
+        "/api/admin/categories": {
+            "get": {
+                "tags": [
+                    "Master Data"
+                ],
+                "summary": "Daftar kategori (villa)",
+                "description": "Terpaginasi. Menyertakan `items_count` untuk kolom \"Jumlah Item\" di layar B4.",
+                "operationId": "8337773a2c74418316bc7d900b21bfd5",
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "description": "Cari berdasarkan nama.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "Aktif",
+                                "Nonaktif"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Daftar kategori",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/SuccessResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/Category"
+                                                    }
+                                                },
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/PaginationMeta"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Tidak punya permission categories:index",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Master Data"
+                ],
+                "summary": "Tambah kategori",
+                "description": "`slug` boleh dikosongkan — otomatis diturunkan dari `name` dan dibuat unik per tenant.",
+                "operationId": "75b0f0a6bf53d317ac1c98222a694749",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CategoryInput"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Kategori dibuat",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Category"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validasi gagal",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/categories/{category}": {
+            "put": {
+                "tags": [
+                    "Master Data"
+                ],
+                "summary": "Ubah kategori",
+                "operationId": "decc152d00e60f86768977bbbe517a13",
+                "parameters": [
+                    {
+                        "name": "category",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CategoryInput"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Kategori diperbarui",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Category"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Tidak ditemukan (atau milik tenant lain)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Master Data"
+                ],
+                "summary": "Hapus kategori",
+                "description": "Soft delete. Ditolak bila masih punya item — hapus/pindahkan itemnya lebih dulu.",
+                "operationId": "59f9e8d62f6df5da4b508311692e8e94",
+                "parameters": [
+                    {
+                        "name": "category",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Terhapus"
+                    },
+                    "422": {
+                        "description": "Masih punya item",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/facilities": {
+            "get": {
+                "tags": [
+                    "Master Data"
+                ],
+                "summary": "Daftar fasilitas",
+                "description": "Dikembalikan utuh tanpa paginasi — layar B4 menampilkannya sebagai deretan chip.",
+                "operationId": "ff767b73ef1a2c51e15134f5e1a76a01",
+                "responses": {
+                    "200": {
+                        "description": "Daftar fasilitas",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/SuccessResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/Facility"
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Tidak punya permission facilities:index",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Master Data"
+                ],
+                "summary": "Tambah fasilitas",
+                "operationId": "447c6c50f3913e5f15754c07a436d3d4",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FacilityInput"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Fasilitas dibuat",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Facility"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validasi gagal",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/facilities/{facility}": {
+            "put": {
+                "tags": [
+                    "Master Data"
+                ],
+                "summary": "Ubah fasilitas",
+                "operationId": "5938511b811707d2f63fac363e1cc526",
+                "parameters": [
+                    {
+                        "name": "facility",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FacilityInput"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Fasilitas diperbarui",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Facility"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Tidak ditemukan",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Master Data"
+                ],
+                "summary": "Hapus fasilitas",
+                "description": "Soft delete. Tautan ke kategori ikut dilepas.",
+                "operationId": "f2d5ca0c165eaf7f3d478c3414efe761",
+                "parameters": [
+                    {
+                        "name": "facility",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Terhapus"
+                    },
+                    "404": {
+                        "description": "Tidak ditemukan",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/health": {
             "get": {
                 "tags": [
@@ -399,10 +1036,665 @@
                     }
                 }
             }
+        },
+        "/api/admin/items": {
+            "get": {
+                "tags": [
+                    "Master Data"
+                ],
+                "summary": "Daftar item",
+                "description": "Terpaginasi. Parameter `q`, `status`, dan `category_id` memetakan langsung ke kotak pencarian dan filter di ItemList.",
+                "operationId": "7b095913d6e344120f07ae3fa7b7f866",
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "description": "Cari nama item.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "Aktif",
+                                "Nonaktif"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "category_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Daftar item",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/SuccessResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/Item"
+                                                    }
+                                                },
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/PaginationMeta"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Tidak punya permission items:index",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Master Data"
+                ],
+                "summary": "Tambah item",
+                "description": "Tanpa `status`, item tersimpan sebagai `Nonaktif` — inilah perilaku tombol \"Simpan Draft\"; \"Simpan & Aktifkan\" mengirim `status: \"Aktif\"`.",
+                "operationId": "02f4d081778149a510ba481c59d7e304",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ItemInput"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Item dibuat",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Item"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validasi gagal",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/items/{item}": {
+            "get": {
+                "tags": [
+                    "Master Data"
+                ],
+                "summary": "Detail item",
+                "description": "Dipakai ItemForm saat mode edit untuk mengisi ketiga tab.",
+                "operationId": "9e40ab5c4054eb8c563dcdded54bb004",
+                "parameters": [
+                    {
+                        "name": "item",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detail item",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Item"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Tidak ditemukan",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Master Data"
+                ],
+                "summary": "Ubah item",
+                "operationId": "f86d37dc899fe481bb82189f16f8619b",
+                "parameters": [
+                    {
+                        "name": "item",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ItemInput"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Item diperbarui",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Item"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validasi gagal",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Master Data"
+                ],
+                "summary": "Hapus item",
+                "description": "Soft delete — booking lama yang menunjuk item ini tetap utuh.",
+                "operationId": "2e00e4a86265e47e68485c299d7e1f01",
+                "parameters": [
+                    {
+                        "name": "item",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Terhapus"
+                    },
+                    "404": {
+                        "description": "Tidak ditemukan",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/villas": {
+            "get": {
+                "tags": [
+                    "Katalog Publik"
+                ],
+                "summary": "Daftar villa (A2)",
+                "description": "Katalog villa untuk halaman listing. Tidak butuh autentikasi.\n\nKategori nonaktif ATAU yang belum punya item aktif tetap dikembalikan,\nditandai `coming_soon: true` dengan `price_from: null` — frontend\nmenampilkannya diredupkan dengan label \"Segera hadir\" (lihat kartu\nWisata Camping). Menyaringnya di server akan menghilangkan kartu itu.\n\n`price_from` dan `capacity` dihitung dari item aktif, bukan kolom\ntersimpan di kategori.",
+                "operationId": "1be66933b76af35ba506c7510f579df9",
+                "parameters": [
+                    {
+                        "name": "X-Tenant",
+                        "in": "header",
+                        "description": "Slug tenant. Bila kosong dipakai tenant default dari konfigurasi.",
+                        "schema": {
+                            "type": "string",
+                            "example": "decorinna"
+                        }
+                    },
+                    {
+                        "name": "cap_min",
+                        "in": "query",
+                        "description": "Filter kapasitas minimum (dari dropdown \"Kapasitas tamu\").",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "cap_max",
+                        "in": "query",
+                        "description": "Filter kapasitas maksimum.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Daftar villa",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/SuccessResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/Villa"
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Tenant tidak ditemukan/tidak aktif",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/villas/{slug}": {
+            "get": {
+                "tags": [
+                    "Katalog Publik"
+                ],
+                "summary": "Detail villa (A3)",
+                "description": "Detail villa beserta fasilitas, item aktif (tarif weekday/weekend), dan add-on yang tertaut. Add-on disertakan di sini supaya layar pilih add-on (A7) tidak perlu panggilan terpisah.",
+                "operationId": "0cc0cd54f6ea2e4fba7e1f90685d29b2",
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "villa-de-corrinna"
+                        }
+                    },
+                    {
+                        "name": "X-Tenant",
+                        "in": "header",
+                        "schema": {
+                            "type": "string",
+                            "example": "decorinna"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detail villa",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/VillaDetail"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Villa atau tenant tidak ditemukan",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {
         "schemas": {
+            "Addon": {
+                "title": "Addon",
+                "description": "Cerminan AddonResource.",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Extra Bed"
+                    },
+                    "price": {
+                        "type": "integer",
+                        "example": 150000
+                    },
+                    "description": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "unit": {
+                        "description": "Satuan tampilan di A7: \"unit\" (Extra Bed), \"jam\" (Late Checkout), atau null untuk harga flat.",
+                        "type": "string",
+                        "example": "unit",
+                        "nullable": true
+                    },
+                    "deadline_days": {
+                        "description": "Batas pemesanan H-n sebelum check-in (mis. catering H-4).",
+                        "type": "integer",
+                        "example": 4,
+                        "nullable": true
+                    },
+                    "status": {
+                        "type": "string",
+                        "example": "Aktif",
+                        "enum": [
+                            "Aktif",
+                            "Nonaktif"
+                        ]
+                    },
+                    "links": {
+                        "description": "Bentuk datar dari pivot polimorfik — mengisi kolom \"Terhubung ke Item/Kategori\".",
+                        "type": "array",
+                        "items": {
+                            "properties": {
+                                "type": {
+                                    "type": "string",
+                                    "enum": [
+                                        "category",
+                                        "item"
+                                    ]
+                                },
+                                "id": {
+                                    "type": "integer"
+                                },
+                                "label": {
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        },
+                        "example": [
+                            {
+                                "type": "category",
+                                "id": 1,
+                                "label": "Villa De Corrinna"
+                            }
+                        ]
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "AddonInput": {
+                "title": "AddonInput",
+                "description": "Body untuk POST/PUT add-on. Tautan dikirim sebagai dua daftar id terpisah\nlalu digabung ke pivot polimorfik `addon_links`.",
+                "required": [
+                    "name",
+                    "price"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "example": "Extra Bed"
+                    },
+                    "price": {
+                        "type": "integer",
+                        "example": 150000
+                    },
+                    "description": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "unit": {
+                        "type": "string",
+                        "example": "unit",
+                        "nullable": true
+                    },
+                    "deadline_days": {
+                        "type": "integer",
+                        "example": 4,
+                        "nullable": true
+                    },
+                    "status": {
+                        "type": "string",
+                        "example": "Aktif",
+                        "enum": [
+                            "Aktif",
+                            "Nonaktif"
+                        ]
+                    },
+                    "category_ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "example": [
+                            1,
+                            2
+                        ]
+                    },
+                    "item_ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "example": []
+                    }
+                },
+                "type": "object"
+            },
+            "Category": {
+                "title": "Category",
+                "description": "Kategori = \"villa\" di katalog publik, sekaligus induk item di admin.",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Villa De Corrinna"
+                    },
+                    "slug": {
+                        "description": "Dipakai /api/villas/{slug}. Unik per tenant.",
+                        "type": "string",
+                        "example": "villa-de-corrinna"
+                    },
+                    "icon": {
+                        "description": "Nama ikon lucide.",
+                        "type": "string",
+                        "example": "house",
+                        "nullable": true
+                    },
+                    "description": {
+                        "type": "string",
+                        "example": "Rumah utama kami — sanctuary yang tenang di antara pepohonan pinus.",
+                        "nullable": true
+                    },
+                    "tagline": {
+                        "type": "string",
+                        "example": "Rumah utama dengan taman luas dan kolam privat.",
+                        "nullable": true
+                    },
+                    "location": {
+                        "type": "string",
+                        "example": "Kawasan Gerbang Gunungsari, Pamijahan, Bogor",
+                        "nullable": true
+                    },
+                    "status": {
+                        "type": "string",
+                        "example": "Aktif",
+                        "enum": [
+                            "Aktif",
+                            "Nonaktif"
+                        ]
+                    },
+                    "items_count": {
+                        "description": "Kolom \"Jumlah Item\" di B4 — hanya ada pada endpoint list.",
+                        "type": "integer",
+                        "example": 12
+                    },
+                    "facilities": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Facility"
+                        }
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "CategoryInput": {
+                "title": "CategoryInput",
+                "description": "Body untuk POST/PUT kategori. Cerminan StoreCategoryRequest/UpdateCategoryRequest.",
+                "required": [
+                    "name"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "example": "Villa De Corrinna"
+                    },
+                    "slug": {
+                        "description": "Opsional — diturunkan dari `name` bila kosong, lalu dibuat unik per tenant.",
+                        "type": "string",
+                        "example": "villa-de-corrinna"
+                    },
+                    "icon": {
+                        "type": "string",
+                        "example": "house",
+                        "nullable": true
+                    },
+                    "description": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "tagline": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "location": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "status": {
+                        "type": "string",
+                        "example": "Aktif",
+                        "enum": [
+                            "Aktif",
+                            "Nonaktif"
+                        ]
+                    },
+                    "facility_ids": {
+                        "description": "Sync fasilitas villa. Bila field ini tidak dikirim sama sekali, tautan lama dibiarkan apa adanya.",
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "example": [
+                            1,
+                            2
+                        ]
+                    }
+                },
+                "type": "object"
+            },
             "ErrorResponse": {
                 "title": "ErrorResponse",
                 "description": "Envelope response error standar.",
@@ -424,6 +1716,264 @@
                             ]
                         },
                         "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "Facility": {
+                "title": "Facility",
+                "description": "Cerminan FacilityResource.",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Private Pool"
+                    },
+                    "icon": {
+                        "description": "Nama ikon lucide.",
+                        "type": "string",
+                        "example": "waves",
+                        "nullable": true
+                    },
+                    "status": {
+                        "type": "string",
+                        "example": "Aktif",
+                        "enum": [
+                            "Aktif",
+                            "Nonaktif"
+                        ]
+                    }
+                },
+                "type": "object"
+            },
+            "FacilityInput": {
+                "title": "FacilityInput",
+                "description": "Body untuk POST/PUT fasilitas.",
+                "required": [
+                    "name"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "example": "Private Pool"
+                    },
+                    "icon": {
+                        "type": "string",
+                        "example": "waves",
+                        "nullable": true
+                    },
+                    "status": {
+                        "type": "string",
+                        "example": "Aktif",
+                        "enum": [
+                            "Aktif",
+                            "Nonaktif"
+                        ]
+                    },
+                    "category_ids": {
+                        "description": "Villa mana saja yang punya fasilitas ini.",
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "example": [
+                            1,
+                            2
+                        ]
+                    }
+                },
+                "type": "object"
+            },
+            "Item": {
+                "title": "Item",
+                "description": "Kamar/paket di dalam sebuah kategori (villa).",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "category_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Kamar Superior"
+                    },
+                    "description": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "capacity_type": {
+                        "type": "string",
+                        "example": "Rentang",
+                        "enum": [
+                            "Tetap",
+                            "Rentang"
+                        ]
+                    },
+                    "cap_min": {
+                        "type": "integer",
+                        "example": 8
+                    },
+                    "cap_max": {
+                        "type": "integer",
+                        "example": 12
+                    },
+                    "price_weekday": {
+                        "description": "Rupiah sebagai integer, tidak pernah float.",
+                        "type": "integer",
+                        "example": 4000000
+                    },
+                    "price_weekend": {
+                        "type": "integer",
+                        "example": 4800000
+                    },
+                    "payment_mode": {
+                        "description": "Nilai persis seperti label radio di ItemForm. ⚠ Kebijakan default per item belum final (dok 05) — backend hanya menyimpan pilihan admin.",
+                        "type": "string",
+                        "example": "Full Payment",
+                        "enum": [
+                            "Full Payment",
+                            "DP + Pelunasan",
+                            "Keduanya — customer memilih"
+                        ]
+                    },
+                    "dp_minimum": {
+                        "description": "Wajib bila payment_mode memakai DP.",
+                        "type": "integer",
+                        "example": 2000000,
+                        "nullable": true
+                    },
+                    "requires_survey": {
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "status": {
+                        "type": "string",
+                        "example": "Aktif",
+                        "enum": [
+                            "Aktif",
+                            "Nonaktif"
+                        ]
+                    },
+                    "photos": {
+                        "description": "Selalu ada; masih kosong sampai endpoint upload dibuat.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ItemPhoto"
+                        }
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "ItemInput": {
+                "title": "ItemInput",
+                "description": "Body untuk POST/PUT item. Cerminan StoreItemRequest/UpdateItemRequest.",
+                "required": [
+                    "category_id",
+                    "name",
+                    "cap_min",
+                    "cap_max",
+                    "price_weekday",
+                    "price_weekend",
+                    "payment_mode"
+                ],
+                "properties": {
+                    "category_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Kamar Superior"
+                    },
+                    "description": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "capacity_type": {
+                        "type": "string",
+                        "example": "Rentang",
+                        "enum": [
+                            "Tetap",
+                            "Rentang"
+                        ]
+                    },
+                    "cap_min": {
+                        "type": "integer",
+                        "example": 8
+                    },
+                    "cap_max": {
+                        "description": "Tidak boleh lebih kecil dari cap_min.",
+                        "type": "integer",
+                        "example": 12
+                    },
+                    "price_weekday": {
+                        "type": "integer",
+                        "example": 4000000
+                    },
+                    "price_weekend": {
+                        "type": "integer",
+                        "example": 4800000
+                    },
+                    "payment_mode": {
+                        "type": "string",
+                        "example": "Full Payment",
+                        "enum": [
+                            "Full Payment",
+                            "DP + Pelunasan",
+                            "Keduanya — customer memilih"
+                        ]
+                    },
+                    "dp_minimum": {
+                        "description": "Wajib bila payment_mode = \"DP + Pelunasan\" atau \"Keduanya — customer memilih\".",
+                        "type": "integer",
+                        "example": 2000000,
+                        "nullable": true
+                    },
+                    "requires_survey": {
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "status": {
+                        "description": "Bila tidak dikirim, item tersimpan Nonaktif — inilah tombol \"Simpan Draft\".",
+                        "type": "string",
+                        "example": "Aktif",
+                        "enum": [
+                            "Aktif",
+                            "Nonaktif"
+                        ]
+                    }
+                },
+                "type": "object"
+            },
+            "ItemPhoto": {
+                "title": "ItemPhoto",
+                "description": "Cerminan ItemPhotoResource.",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "url": {
+                        "type": "string",
+                        "example": "/storage/items/kamar-superior-1.jpg"
+                    },
+                    "sort_order": {
+                        "type": "integer",
+                        "example": 0
+                    },
+                    "is_cover": {
+                        "type": "boolean",
+                        "example": true
                     }
                 },
                 "type": "object"
@@ -529,6 +2079,148 @@
                     }
                 },
                 "type": "object"
+            },
+            "Villa": {
+                "title": "Villa",
+                "description": "Kartu villa di katalog publik (A2).",
+                "properties": {
+                    "slug": {
+                        "type": "string",
+                        "example": "villa-de-corrinna"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Villa De Corrinna"
+                    },
+                    "icon": {
+                        "type": "string",
+                        "example": "house",
+                        "nullable": true
+                    },
+                    "tagline": {
+                        "type": "string",
+                        "example": "Rumah utama dengan taman luas dan kolam privat.",
+                        "nullable": true
+                    },
+                    "coming_soon": {
+                        "description": "true bila kategori nonaktif ATAU belum punya item aktif. Kartu tetap dikembalikan, frontend menampilkannya diredupkan dengan label \"Segera hadir\".",
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "price_from": {
+                        "description": "Harga weekday termurah dari item aktif. null bila coming_soon.",
+                        "type": "integer",
+                        "example": 4000000,
+                        "nullable": true
+                    },
+                    "capacity": {
+                        "description": "Rentang gabungan dari item aktif — mengisi teks \"8–30 orang\".",
+                        "properties": {
+                            "min": {
+                                "type": "integer",
+                                "example": 8,
+                                "nullable": true
+                            },
+                            "max": {
+                                "type": "integer",
+                                "example": 30,
+                                "nullable": true
+                            }
+                        },
+                        "type": "object"
+                    },
+                    "photo": {
+                        "description": "Menyusul bersama endpoint upload foto.",
+                        "type": "string",
+                        "example": null,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "VillaDetail": {
+                "title": "VillaDetail",
+                "description": "Detail villa publik (A3), termasuk add-on yang dipakai layar A7.",
+                "properties": {
+                    "slug": {
+                        "type": "string",
+                        "example": "villa-de-corrinna"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Villa De Corrinna"
+                    },
+                    "icon": {
+                        "type": "string",
+                        "example": "house",
+                        "nullable": true
+                    },
+                    "tagline": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "description": {
+                        "description": "Isi bagian \"Tentang villa ini\".",
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "location": {
+                        "type": "string",
+                        "example": "Kawasan Gerbang Gunungsari, Pamijahan, Bogor",
+                        "nullable": true
+                    },
+                    "coming_soon": {
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "price_from": {
+                        "type": "integer",
+                        "example": 4000000,
+                        "nullable": true
+                    },
+                    "capacity": {
+                        "properties": {
+                            "min": {
+                                "type": "integer",
+                                "example": 8,
+                                "nullable": true
+                            },
+                            "max": {
+                                "type": "integer",
+                                "example": 30,
+                                "nullable": true
+                            }
+                        },
+                        "type": "object"
+                    },
+                    "facilities": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Facility"
+                        }
+                    },
+                    "items": {
+                        "description": "Hanya item berstatus Aktif, diurutkan dari harga weekday termurah.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Item"
+                        }
+                    },
+                    "addons": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Addon"
+                        }
+                    },
+                    "photos": {
+                        "description": "Menyusul bersama endpoint upload foto.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ItemPhoto"
+                        }
+                    }
+                },
+                "type": "object"
             }
         },
         "securitySchemes": {
@@ -548,6 +2240,14 @@
         {
             "name": "Auth",
             "description": "Registrasi, login, logout, profil (Fase 1)"
+        },
+        {
+            "name": "Master Data",
+            "description": "Kategori, item, fasilitas, add-on — admin, butuh permission (Fase 2)"
+        },
+        {
+            "name": "Katalog Publik",
+            "description": "Katalog villa untuk pengunjung (A2/A3). Tanpa login; tenant dari header X-Tenant (Fase 2)"
         }
     ]
 }

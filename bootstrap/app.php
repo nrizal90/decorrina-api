@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\DynamicRBACMiddleware;
+use App\Http\Middleware\PublicTenantMiddleware;
 use App\Http\Middleware\SetTenantMiddleware;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
@@ -24,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Lapis 0 & 2 RBAC De'Corrinna (docs/06-rbac-decorina.md).
         $middleware->alias([
             'tenant' => SetTenantMiddleware::class,
+            'tenant.public' => PublicTenantMiddleware::class,
             'rbac' => DynamicRBACMiddleware::class,
         ]);
     })

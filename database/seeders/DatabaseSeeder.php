@@ -13,6 +13,8 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             AuthRolePermissionSeeder::class,
+            // Bergantung pada tenant "decorinna" yang dibuat seeder di atas.
+            MasterDataSeeder::class,
         ]);
     }
 }
