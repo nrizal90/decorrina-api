@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Middleware\DynamicRBACMiddleware;
+use App\Http\Middleware\SetTenantMiddleware;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -19,7 +21,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        //
+        // Lapis 0 & 2 RBAC De'Corrinna (docs/06-rbac-decorina.md).
+        $middleware->alias([
+            'tenant' => SetTenantMiddleware::class,
+            'rbac' => DynamicRBACMiddleware::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         // Semua error di jalur API dikembalikan sebagai JSON dengan bentuk
