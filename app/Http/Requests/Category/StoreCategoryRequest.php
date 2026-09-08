@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Category;
 
+use App\Rules\ExistsInTenant;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -28,7 +29,7 @@ class StoreCategoryRequest extends FormRequest
             'location' => ['nullable', 'string', 'max:255'],
             'status' => ['sometimes', Rule::in(['Aktif', 'Nonaktif'])],
             'facility_ids' => ['sometimes', 'array'],
-            'facility_ids.*' => ['integer', 'exists:facilities,id'],
+            'facility_ids.*' => ['integer', new ExistsInTenant('facilities')],
         ];
     }
 }

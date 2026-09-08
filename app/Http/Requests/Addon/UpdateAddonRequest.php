@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Addon;
 
+use App\Rules\ExistsInTenant;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -25,9 +26,9 @@ class UpdateAddonRequest extends FormRequest
             'deadline_days' => ['nullable', 'integer', 'min:0'],
             'status' => ['sometimes', Rule::in(['Aktif', 'Nonaktif'])],
             'category_ids' => ['sometimes', 'array'],
-            'category_ids.*' => ['integer', 'exists:categories,id'],
+            'category_ids.*' => ['integer', new ExistsInTenant('categories')],
             'item_ids' => ['sometimes', 'array'],
-            'item_ids.*' => ['integer', 'exists:items,id'],
+            'item_ids.*' => ['integer', new ExistsInTenant('items')],
         ];
     }
 }

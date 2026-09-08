@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Item;
 
 use App\Models\Item;
+use App\Rules\ExistsInTenant;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -20,7 +21,7 @@ class StoreItemRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'category_id' => ['required', 'integer', 'exists:categories,id'],
+            'category_id' => ['required', 'integer', new ExistsInTenant('categories')],
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'capacity_type' => ['sometimes', Rule::in(['Tetap', 'Rentang'])],

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Facility;
 
+use App\Rules\ExistsInTenant;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -22,7 +23,7 @@ class UpdateFacilityRequest extends FormRequest
             'icon' => ['nullable', 'string', 'max:50'],
             'status' => ['sometimes', Rule::in(['Aktif', 'Nonaktif'])],
             'category_ids' => ['sometimes', 'array'],
-            'category_ids.*' => ['integer', 'exists:categories,id'],
+            'category_ids.*' => ['integer', new ExistsInTenant('categories')],
         ];
     }
 }

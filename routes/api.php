@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AddonController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\FacilityController;
 use App\Http\Controllers\Api\HealthController;
@@ -63,6 +64,16 @@ Route::middleware(['auth:sanctum', 'tenant', 'rbac'])->group(function () {
     // Role & matriks permission (B13)
     Route::get('/roles', [RoleController::class, 'index'])->name('roles:index');
     Route::put('/roles/{role}/permissions', [RoleController::class, 'sync'])->name('roles:sync');
+
+    /*
+    | Booking (B3, Fase 3). `availability` memakai permission bookings:index
+    | karena sifatnya membaca — alias didaftarkan di DynamicRBACMiddleware.
+    */
+    Route::get('/bookings', [BookingController::class, 'index'])->name('bookings:index');
+    Route::post('/bookings', [BookingController::class, 'store'])->name('bookings:store');
+    Route::get('/bookings/availability', [BookingController::class, 'availability'])->name('bookings:availability');
+    Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('bookings:show');
+    Route::patch('/bookings/{booking}/status', [BookingController::class, 'updateStatus'])->name('bookings:update-status');
 
     /*
     | Master Data (B4, Fase 2) — prefix /admin sesuai dok 03.

@@ -32,4 +32,5 @@ use OpenApi\Attributes as OA;
 #[OA\Tag(name: 'Auth', description: 'Registrasi, login, logout, profil (Fase 1)')]
 #[OA\Tag(name: 'Master Data', description: 'Kategori, item, fasilitas, add-on — admin, butuh permission (Fase 2)')]
 #[OA\Tag(name: 'Katalog Publik', description: 'Katalog villa untuk pengunjung (A2/A3). Tanpa login; tenant dari header X-Tenant (Fase 2)')]
+#[OA\Tag(name: 'Booking', description: 'Pemesanan kamar/paket: daftar, booking manual admin, cek ketersediaan, ubah status (Fase 3)')]
 class OpenApiSpec {}

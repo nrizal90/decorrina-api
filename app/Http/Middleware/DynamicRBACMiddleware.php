@@ -28,7 +28,11 @@ class DynamicRBACMiddleware
      *
      * @var array<string, string>
      */
-    protected array $aliases = [];
+    protected array $aliases = [
+        // Cek ketersediaan tanggal hanya membaca data booking, jadi ia ikut
+        // permission yang sama dengan daftar booking.
+        'bookings:availability' => 'bookings:index',
+    ];
 
     public function handle(Request $request, Closure $next): Response
     {
