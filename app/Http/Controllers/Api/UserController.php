@@ -41,11 +41,14 @@ class UserController extends Controller
         $actor = $request->user();
         $roles = $this->guardRoles($request->validated('roles'), $actor);
 
-        // Aktor azatech boleh set tenant tujuan; selain itu ikut tenant aktif
-        // (auto-fill BelongsToTenant). NULL tetap NULL bila tak ada konteks.
+        // Aktor azatech boleh set tenant tujuan lewat body; bila tidak disebut,
+        // ikut tenant yang sedang ia pakai (header X-Tenant → SetTenantMiddleware).
+        // Tanpa keduanya user akan lahir tanpa pemilik — lihat catatan di bawah.
+        $activeTenantId = app()->bound('currentTenantId') ? app('currentTenantId') : null;
+
         $tenantId = $actor->hasRole('superadmin-azatech')
-            ? $request->validated('tenant_id')
-            : (app()->bound('currentTenantId') ? app('currentTenantId') : null);
+            ? ($request->validated('tenant_id') ?? $activeTenantId)
+            : $activeTenantId;
 
         $user = User::create([
             'tenant_id' => $tenantId,
