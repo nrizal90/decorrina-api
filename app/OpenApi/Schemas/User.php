@@ -35,6 +35,15 @@ class User
     public ?int $tenant_id;
 
     #[OA\Property(
+        property: 'status',
+        type: 'string',
+        enum: ['Aktif', 'Nonaktif'],
+        description: 'Akun `Nonaktif` tidak bisa login (403) dan tokennya dicabut saat dinonaktifkan.',
+        example: 'Aktif'
+    )]
+    public string $status;
+
+    #[OA\Property(
         property: 'roles',
         type: 'array',
         items: new OA\Items(type: 'string'),

@@ -445,6 +445,30 @@
                             }
                         }
                     },
+                    "403": {
+                        "description": "Akun nonaktif",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ErrorResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "example": "Akun Anda nonaktif. Hubungi admin."
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
                     "422": {
                         "description": "Validasi gagal (email/password kosong atau format email salah)",
                         "content": {
@@ -2052,6 +2076,15 @@
                         "type": "integer",
                         "example": null,
                         "nullable": true
+                    },
+                    "status": {
+                        "description": "Akun `Nonaktif` tidak bisa login (403) dan tokennya dicabut saat dinonaktifkan.",
+                        "type": "string",
+                        "example": "Aktif",
+                        "enum": [
+                            "Aktif",
+                            "Nonaktif"
+                        ]
                     },
                     "roles": {
                         "type": "array",

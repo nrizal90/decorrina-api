@@ -8,6 +8,7 @@ use App\Models\Facility;
 use App\Models\Item;
 use App\Models\Tenant;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Collection;
 
 /**
  * Data awal Master Data (Fase 2), disalin dari frontend agar layar B4 & katalog
@@ -137,7 +138,7 @@ class MasterDataSeeder extends Seeder
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, Facility>
+     * @return Collection<int, Facility>
      */
     private function seedFacilities(int $tenantId)
     {

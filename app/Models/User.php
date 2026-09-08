@@ -16,6 +16,9 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use BelongsToTenant, HasApiTokens, HasFactory, HasRoles, Notifiable;
 
+    /** Nilai `status` — string persis seperti label di UserRoleManagement.tsx. */
+    public const STATUSES = ['Aktif', 'Nonaktif'];
+
     /**
      * The attributes that are mass assignable.
      *
@@ -26,6 +29,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'status',
     ];
 
     /**
@@ -49,5 +53,11 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /** Hanya akun aktif yang boleh login (ditegakkan di AuthController). */
+    public function isActive(): bool
+    {
+        return $this->status === 'Aktif';
     }
 }

@@ -52,6 +52,8 @@ class UserController extends Controller
             'name' => $request->validated('name'),
             'email' => $request->validated('email'),
             'password' => Hash::make($request->validated('password')),
+            // Default 'Aktif' agar form yang belum mengirim status tetap sah.
+            'status' => $request->validated('status') ?? 'Aktif',
         ]);
 
         $user->syncRoles($roles);
@@ -61,11 +63,18 @@ class UserController extends Controller
 
     public function update(UpdateUserRequest $request, User $user): JsonResponse
     {
-        $data = $request->safe()->only(['name', 'email']);
+        $data = $request->safe()->only(['name', 'email', 'status']);
         if ($request->filled('password')) {
             $data['password'] = Hash::make($request->validated('password'));
         }
         $user->update($data);
+
+        // Menonaktifkan akun harus langsung memutus akses, bukan menunggu
+        // token kedaluwarsa — tanpa ini user nonaktif tetap bisa memakai
+        // token yang sudah terbit sebelumnya.
+        if (! $user->isActive()) {
+            $user->tokens()->delete();
+        }
 
         if ($request->has('roles')) {
             $roles = $this->guardRoles($request->validated('roles'), $request->user());

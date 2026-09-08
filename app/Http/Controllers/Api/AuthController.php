@@ -134,6 +134,16 @@ class AuthController extends Controller
                 )
             ),
             new OA\Response(
+                response: 403,
+                description: 'Akun nonaktif',
+                content: new OA\JsonContent(
+                    allOf: [new OA\Schema(ref: '#/components/schemas/ErrorResponse')],
+                    properties: [
+                        new OA\Property(property: 'message', type: 'string', example: 'Akun Anda nonaktif. Hubungi admin.'),
+                    ]
+                )
+            ),
+            new OA\Response(
                 response: 422,
                 description: 'Validasi gagal (email/password kosong atau format email salah)',
                 content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')
@@ -146,6 +156,12 @@ class AuthController extends Controller
 
         if (! $user || ! Hash::check($request->validated('password'), $user->password)) {
             return $this->error('Email atau password salah.', 401);
+        }
+
+        // Akun nonaktif: kredensial benar, tapi akses ditahan. Dibedakan dari
+        // 401 agar user tahu harus menghubungi admin, bukan mencoba sandi lain.
+        if (! $user->isActive()) {
+            return $this->error('Akun Anda nonaktif. Hubungi admin.', 403);
         }
 
         $token = $user->createToken($this->deviceName($request))->plainTextToken;
