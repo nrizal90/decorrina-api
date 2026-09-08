@@ -42,6 +42,9 @@ class FacilityController extends Controller
     public function index(Request $request): JsonResponse
     {
         $facilities = Facility::query()
+            // Jumlah villa yang memakai fasilitas ini — dipakai layar admin
+            // untuk memperingatkan dampak sebelum menghapus.
+            ->withCount('categories')
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
             ->orderBy('name')
             ->get();

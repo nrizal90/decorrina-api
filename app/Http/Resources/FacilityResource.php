@@ -20,6 +20,7 @@ class FacilityResource extends JsonResource
             'name' => $this->name,
             'icon' => $this->icon,
             'status' => $this->status,
+            'categories_count' => $this->whenCounted('categories'),
         ];
     }
 }

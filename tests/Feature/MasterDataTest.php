@@ -246,6 +246,23 @@ class MasterDataTest extends TestCase
         $response->assertOk()->assertJsonCount(6, 'data')->assertJsonMissingPath('meta');
     }
 
+    public function test_facility_list_reports_how_many_villas_use_it(): void
+    {
+        Sanctum::actingAs($this->klien());
+
+        $facilities = collect($this->getJson('/api/admin/facilities')->json('data'));
+
+        // Dipakai layar admin untuk memperingatkan dampak sebelum menghapus:
+        // menghapus fasilitas melepasnya dari setiap villa yang memakainya.
+        $pool = $facilities->firstWhere('name', 'Private Pool');
+
+        $this->assertNotNull($pool);
+        $this->assertSame(
+            Facility::where('name', 'Private Pool')->firstOrFail()->categories()->count(),
+            $pool['categories_count'],
+        );
+    }
+
     public function test_admin_cannot_see_master_data_of_another_tenant(): void
     {
         $other = Tenant::create(['name' => 'Klien Lain', 'slug' => 'klien-lain', 'status' => 'Aktif']);
