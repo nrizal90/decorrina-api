@@ -28,6 +28,10 @@ class StoreBookingRequest extends FormRequest
             'guest_phone' => ['nullable', 'string', 'max:30'],
             'guest_email' => ['nullable', 'email', 'max:255'],
 
+            // SENGAJA tanpa `after_or_equal:today`. Booking manual juga dipakai
+            // mencatat tamu walk-in yang sudah terlanjur menginap, jadi tanggal
+            // lampau harus tetap boleh. Jangan tambahkan aturan itu tanpa
+            // menyediakan jalur pencatatan susulan lebih dulu.
             'check_in' => ['required', 'date_format:Y-m-d'],
             // after: menginap minimal satu malam — check-out tak boleh sama
             // dengan check-in.

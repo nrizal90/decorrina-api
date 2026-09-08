@@ -226,6 +226,17 @@ class BookingTest extends TestCase
         ]))->assertStatus(422);
     }
 
+    public function test_backdated_checkin_is_allowed_for_walk_in_guests(): void
+    {
+        // Booking manual juga dipakai mencatat tamu yang sudah terlanjur
+        // menginap, jadi tanggal lampau TIDAK ditolak. Test ini menjaga agar
+        // keputusan itu tidak diam-diam dibalik.
+        $this->postJson('/api/bookings', $this->payload([
+            'check_in' => now()->subDays(5)->toDateString(),
+            'check_out' => now()->subDays(3)->toDateString(),
+        ]))->assertCreated();
+    }
+
     public function test_checkout_must_be_after_checkin(): void
     {
         $this->postJson('/api/bookings', $this->payload([
