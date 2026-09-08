@@ -40,7 +40,10 @@ class StoreBookingRequest extends FormRequest
             'pax' => ['required', 'integer', 'min:1'],
 
             'addons' => ['sometimes', 'array'],
-            'addons.*.addon_id' => ['required', 'integer', new ExistsInTenant('addons')],
+            // `distinct`: satu add-on hanya boleh muncul sekali. Tanpa ini,
+            // unique(booking_id, addon_id) di DB akan meledak jadi error 500
+            // alih-alih pesan validasi. Jumlah diatur lewat `qty`.
+            'addons.*.addon_id' => ['required', 'integer', 'distinct', new ExistsInTenant('addons')],
             'addons.*.qty' => ['sometimes', 'integer', 'min:1', 'max:99'],
 
             'notes' => ['nullable', 'string'],
@@ -52,6 +55,7 @@ class StoreBookingRequest extends FormRequest
         return [
             'check_out.after' => 'Tanggal check-out harus setelah tanggal check-in (menginap minimal satu malam).',
             'pax.min' => 'Jumlah tamu minimal 1 orang.',
+            'addons.*.addon_id.distinct' => 'Add-on yang sama dikirim lebih dari sekali. Pakai jumlah (qty), bukan baris ganda.',
         ];
     }
 }

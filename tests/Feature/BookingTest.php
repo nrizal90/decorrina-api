@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Addon;
 use App\Models\Booking;
+use App\Models\Category;
 use App\Models\Guest;
 use App\Models\Item;
 use App\Models\User;
@@ -128,6 +129,73 @@ class BookingTest extends TestCase
         $this->assertSame(300_000, $booking->subtotal_addons);
         $this->assertSame(8_300_000, $booking->total);
         $this->assertSame(150_000, $booking->addons()->first()->unit_price);
+    }
+
+    public function test_inactive_addon_cannot_be_booked(): void
+    {
+        // Paket BBQ diseed Nonaktif — tidak ditawarkan ke customer, jadi tidak
+        // boleh ditagihkan lewat booking manual pun.
+        $bbq = Addon::where('name', 'Paket BBQ')->firstOrFail();
+
+        $this->postJson('/api/bookings', $this->payload([
+            'addons' => [['addon_id' => $bbq->id, 'qty' => 1]],
+        ]))
+            ->assertStatus(422)
+            ->assertJsonPath('success', false);
+
+        $this->assertSame(0, Booking::count());
+    }
+
+    public function test_addon_from_another_villa_cannot_be_booked(): void
+    {
+        $addon = Addon::where('name', 'Extra Bed')->firstOrFail();
+        $item = $this->item();
+
+        // Lepas seluruh tautan lalu tautkan HANYA ke kategori lain, sehingga
+        // add-on ini tidak berlaku untuk kamar yang dipesan.
+        $otherCategory = Category::where('slug', '!=', 'villa-de-corrinna')->firstOrFail();
+        $addon->categories()->sync([$otherCategory->id]);
+        $addon->items()->sync([]);
+
+        $this->assertNotSame($otherCategory->id, $item->category_id);
+
+        $this->postJson('/api/bookings', $this->payload([
+            'addons' => [['addon_id' => $addon->id, 'qty' => 1]],
+        ]))
+            ->assertStatus(422)
+            ->assertJsonPath('success', false);
+    }
+
+    public function test_addon_linked_to_the_item_itself_is_accepted(): void
+    {
+        $addon = Addon::where('name', 'Extra Bed')->firstOrFail();
+        $item = $this->item();
+
+        // Tertaut langsung ke item (bukan lewat kategori) — juga sah.
+        $addon->categories()->sync([]);
+        $addon->items()->sync([$item->id]);
+
+        $this->postJson('/api/bookings', $this->payload([
+            'addons' => [['addon_id' => $addon->id, 'qty' => 1]],
+        ]))->assertCreated();
+    }
+
+    public function test_same_addon_cannot_be_sent_twice(): void
+    {
+        $addon = Addon::where('name', 'Extra Bed')->firstOrFail();
+
+        // Sebelum aturan `distinct`, ini menabrak unique(booking_id, addon_id)
+        // dan keluar sebagai error 500, bukan pesan validasi.
+        $this->postJson('/api/bookings', $this->payload([
+            'addons' => [
+                ['addon_id' => $addon->id, 'qty' => 1],
+                ['addon_id' => $addon->id, 'qty' => 2],
+            ],
+        ]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('addons.1.addon_id');
+
+        $this->assertSame(0, Booking::count());
     }
 
     // ------------------------------------------------- mode pembayaran (item)

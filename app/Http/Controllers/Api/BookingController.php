@@ -208,6 +208,10 @@ class BookingController extends Controller
             return $error;
         }
 
+        if ($error = $this->validateAddons($item, $request->input('addons', []))) {
+            return $error;
+        }
+
         $booking = DB::transaction(function () use ($request, $item, $checkIn, $checkOut) {
             $stay = BookingPricing::forStay($item, $checkIn, $checkOut);
 
@@ -344,6 +348,47 @@ class BookingController extends Controller
                         $c->check_out->format('d M Y'),
                     ))
                     ->implode(', '),
+                422,
+            );
+        }
+
+        return null;
+    }
+
+    /**
+     * Add-on hanya boleh dipesan bila BERSTATUS AKTIF dan BERLAKU untuk item
+     * yang dipilih — yaitu tertaut langsung ke item itu, atau ke kategorinya
+     * (berlaku untuk seluruh kamar di villa tersebut).
+     *
+     * Tanpa ini tamu bisa ditagih untuk add-on yang tidak ditawarkan, atau
+     * milik villa lain. Layar admin sudah menyaringnya, tapi itu kenyamanan;
+     * penjagaan sebenarnya harus di sini.
+     *
+     * @param  array<int, array{addon_id: int, qty?: int}>  $lines
+     */
+    private function validateAddons(Item $item, array $lines): ?JsonResponse
+    {
+        if ($lines === []) {
+            return null;
+        }
+
+        $requested = array_unique(array_column($lines, 'addon_id'));
+
+        $allowed = Addon::whereIn('id', $requested)
+            ->where('status', 'Aktif')
+            ->where(fn ($query) => $query
+                ->whereHas('items', fn ($q) => $q->whereKey($item->id))
+                ->orWhereHas('categories', fn ($q) => $q->whereKey($item->category_id)))
+            ->pluck('id')
+            ->all();
+
+        $rejected = array_diff($requested, $allowed);
+
+        if ($rejected !== []) {
+            $names = Addon::whereIn('id', $rejected)->pluck('name')->implode(', ');
+
+            return $this->error(
+                "Add-on berikut tidak bisa dipesan untuk item ini (nonaktif atau tidak tertaut): {$names}.",
                 422,
             );
         }
