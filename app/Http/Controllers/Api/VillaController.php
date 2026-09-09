@@ -3,12 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Villa\IndexVillaRequest;
 use App\Http\Resources\VillaDetailResource;
 use App\Http\Resources\VillaResource;
 use App\Models\Category;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 
 /**
@@ -33,6 +33,12 @@ class VillaController extends Controller
 
         `price_from` dan `capacity` dihitung dari item aktif, bukan kolom
         tersimpan di kategori.
+
+        Filter `cap_*` dan `check_in` digabung pada item yang SAMA: villa lolos
+        bila punya satu item aktif yang muat rombongan itu sekaligus bebas pada
+        tanggal itu. Perlu diketahui, memakai filter apa pun akan menyingkirkan
+        kartu `coming_soon` — kategori tanpa item aktif tidak bisa memenuhi
+        syarat mana pun.
         TXT,
         parameters: [
             new OA\Parameter(
@@ -43,6 +49,8 @@ class VillaController extends Controller
             ),
             new OA\Parameter(name: 'cap_min', in: 'query', description: 'Filter kapasitas minimum (dari dropdown "Kapasitas tamu").', schema: new OA\Schema(type: 'integer')),
             new OA\Parameter(name: 'cap_max', in: 'query', description: 'Filter kapasitas maksimum.', schema: new OA\Schema(type: 'integer')),
+            new OA\Parameter(name: 'check_in', in: 'query', description: 'Filter ketersediaan: hanya villa yang punya item aktif bebas mulai tanggal ini (format Y-m-d).', schema: new OA\Schema(type: 'string', format: 'date', example: '2026-12-24')),
+            new OA\Parameter(name: 'check_out', in: 'query', description: 'Akhir rentang ketersediaan. Bila kosong dipakai satu malam sesudah check_in.', schema: new OA\Schema(type: 'string', format: 'date', example: '2026-12-26')),
         ],
         responses: [
             new OA\Response(
@@ -58,19 +66,33 @@ class VillaController extends Controller
             new OA\Response(response: 404, description: 'Tenant tidak ditemukan/tidak aktif', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
         ]
     )]
-    public function index(Request $request): JsonResponse
+    public function index(IndexVillaRequest $request): JsonResponse
     {
-        // Filter kapasitas = "punya minimal satu item aktif yang muat rombongan
-        // sebesar itu", jadi harus lewat whereHas — bukan HAVING atas alias
-        // agregat, yang tak sah di Postgres tanpa GROUP BY.
+        $hasFilter = $request->filled('cap_min') || $request->filled('cap_max') || $request->hasDateFilter();
+
+        // Kapasitas dan tanggal disaring dalam SATU whereHas, bukan dua yang
+        // berdampingan: syaratnya "ada item aktif yang muat rombongan itu DAN
+        // bebas pada tanggal itu". Dua whereHas terpisah akan meloloskan villa
+        // yang satu kamarnya muat tapi terisi, dan kamar lain kosong tapi
+        // terlalu kecil — persis yang tidak bisa dipesan pengunjung.
+        //
+        // Lewat whereHas, bukan HAVING atas alias agregat: yang terakhir tidak
+        // sah di Postgres tanpa GROUP BY.
         $villas = $this->withCatalogAggregates(Category::query())
-            ->when(
-                $request->filled('cap_min') || $request->filled('cap_max'),
-                fn ($q) => $q->whereHas('activeItems', function ($item) use ($request) {
-                    $item->when($request->filled('cap_min'), fn ($i) => $i->where('cap_max', '>=', $request->integer('cap_min')))
-                        ->when($request->filled('cap_max'), fn ($i) => $i->where('cap_min', '<=', $request->integer('cap_max')));
-                }),
-            )
+            ->when($hasFilter, fn ($q) => $q->whereHas('activeItems', function ($item) use ($request) {
+                $item
+                    ->when($request->filled('cap_min'), fn ($i) => $i->where('cap_max', '>=', $request->integer('cap_min')))
+                    ->when($request->filled('cap_max'), fn ($i) => $i->where('cap_min', '<=', $request->integer('cap_max')))
+                    // Aturan bentroknya milik Booking (scope blocking +
+                    // overlapping), tidak ditulis ulang di sini — termasuk
+                    // bahwa check-out hari X tidak menghalangi check-in hari X.
+                    ->when($request->hasDateFilter(), fn ($i) => $i->whereDoesntHave(
+                        'bookings',
+                        fn ($booking) => $booking
+                            ->blocking()
+                            ->overlapping($request->string('check_in')->toString(), $request->checkOut()),
+                    ));
+            }))
             ->orderByRaw("CASE WHEN status = 'Aktif' THEN 0 ELSE 1 END")
             ->orderBy('name')
             ->get();

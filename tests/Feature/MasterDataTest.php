@@ -81,6 +81,95 @@ class MasterDataTest extends TestCase
             ->assertJsonCount(2, 'data.addons');
     }
 
+    // ------------------------------------------------- filter tanggal (A2)
+
+    /**
+     * Villa disaring dari katalog hanya bila SELURUH item aktifnya terisi pada
+     * tanggal itu. De Corrinna punya dua item aktif, jadi memesan satu saja
+     * tidak boleh menghilangkan kartunya.
+     */
+    public function test_listing_hides_villa_only_when_all_active_items_are_booked(): void
+    {
+        $villa = Category::where('slug', 'villa-de-corrinna')->firstOrFail();
+        $items = $villa->activeItems()->get();
+
+        $this->bookItem($items->first(), '2026-08-17', '2026-08-19');
+
+        $this->assertContains('villa-de-corrinna', $this->listingSlugs(['check_in' => '2026-08-17']));
+
+        $this->bookItem($items->last(), '2026-08-17', '2026-08-19');
+
+        $this->assertNotContains('villa-de-corrinna', $this->listingSlugs(['check_in' => '2026-08-17']));
+    }
+
+    /**
+     * Aturan bentroknya milik Booking (scope `overlapping`): check-out hari X
+     * tidak menghalangi check-in hari X. Katalog harus ikut aturan yang sama,
+     * bukan versinya sendiri.
+     */
+    public function test_listing_treats_checkout_day_as_available(): void
+    {
+        $villa = Category::where('slug', 'villa-de-corrinna')->firstOrFail();
+        foreach ($villa->activeItems()->get() as $item) {
+            $this->bookItem($item, '2026-08-15', '2026-08-17');
+        }
+
+        // Tamu sebelumnya check-out 17 Agustus — tanggal itu tetap bisa dipesan.
+        $this->assertContains('villa-de-corrinna', $this->listingSlugs(['check_in' => '2026-08-17']));
+        $this->assertNotContains('villa-de-corrinna', $this->listingSlugs(['check_in' => '2026-08-16']));
+    }
+
+    /** Kapasitas dan tanggal harus terpenuhi oleh SATU item yang sama. */
+    public function test_capacity_and_date_filters_must_be_satisfied_by_the_same_item(): void
+    {
+        $villa = Category::where('slug', 'villa-de-corrinna')->firstOrFail();
+
+        // Item terbesar dipesan; yang tersisa hanya item yang lebih kecil.
+        $largest = $villa->activeItems()->orderByDesc('cap_max')->firstOrFail();
+        $this->bookItem($largest, '2026-08-17', '2026-08-19');
+
+        $slugs = $this->listingSlugs([
+            'check_in' => '2026-08-17',
+            'cap_min' => $largest->cap_max,
+            'cap_max' => $largest->cap_max,
+        ]);
+
+        // Kamar yang muat sudah terisi, kamar yang kosong tidak muat.
+        $this->assertNotContains('villa-de-corrinna', $slugs);
+    }
+
+    public function test_listing_rejects_a_malformed_date(): void
+    {
+        $this->withHeader('X-Tenant', 'decorinna')
+            ->getJson('/api/villas?check_in=besok')
+            ->assertStatus(422);
+    }
+
+    /** @param array<string, mixed> $query */
+    private function listingSlugs(array $query = []): array
+    {
+        $response = $this->withHeader('X-Tenant', 'decorinna')
+            ->getJson('/api/villas?'.http_build_query($query));
+
+        $response->assertOk();
+
+        return array_column($response->json('data'), 'slug');
+    }
+
+    private function bookItem(Item $item, string $checkIn, string $checkOut): void
+    {
+        Sanctum::actingAs($this->klien());
+
+        $this->postJson('/api/bookings', [
+            'item_id' => $item->id,
+            'guest_name' => 'Tamu Uji',
+            'guest_phone' => '081200000000',
+            'check_in' => $checkIn,
+            'check_out' => $checkOut,
+            'pax' => $item->cap_min,
+        ])->assertCreated();
+    }
+
     public function test_public_endpoints_need_no_authentication(): void
     {
         $this->getJson('/api/villas')->assertOk();

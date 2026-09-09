@@ -1808,7 +1808,7 @@
                     "Katalog Publik"
                 ],
                 "summary": "Daftar villa (A2)",
-                "description": "Katalog villa untuk halaman listing. Tidak butuh autentikasi.\n\nKategori nonaktif ATAU yang belum punya item aktif tetap dikembalikan,\nditandai `coming_soon: true` dengan `price_from: null` — frontend\nmenampilkannya diredupkan dengan label \"Segera hadir\" (lihat kartu\nWisata Camping). Menyaringnya di server akan menghilangkan kartu itu.\n\n`price_from` dan `capacity` dihitung dari item aktif, bukan kolom\ntersimpan di kategori.",
+                "description": "Katalog villa untuk halaman listing. Tidak butuh autentikasi.\r\n\r\nKategori nonaktif ATAU yang belum punya item aktif tetap dikembalikan,\r\nditandai `coming_soon: true` dengan `price_from: null` — frontend\r\nmenampilkannya diredupkan dengan label \"Segera hadir\" (lihat kartu\r\nWisata Camping). Menyaringnya di server akan menghilangkan kartu itu.\r\n\r\n`price_from` dan `capacity` dihitung dari item aktif, bukan kolom\r\ntersimpan di kategori.\r\n\r\nFilter `cap_*` dan `check_in` digabung pada item yang SAMA: villa lolos\r\nbila punya satu item aktif yang muat rombongan itu sekaligus bebas pada\r\ntanggal itu. Perlu diketahui, memakai filter apa pun akan menyingkirkan\r\nkartu `coming_soon` — kategori tanpa item aktif tidak bisa memenuhi\r\nsyarat mana pun.",
                 "operationId": "1be66933b76af35ba506c7510f579df9",
                 "parameters": [
                     {
@@ -1834,6 +1834,26 @@
                         "description": "Filter kapasitas maksimum.",
                         "schema": {
                             "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "check_in",
+                        "in": "query",
+                        "description": "Filter ketersediaan: hanya villa yang punya item aktif bebas mulai tanggal ini (format Y-m-d).",
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-12-24"
+                        }
+                    },
+                    {
+                        "name": "check_out",
+                        "in": "query",
+                        "description": "Akhir rentang ketersediaan. Bila kosong dipakai satu malam sesudah check_in.",
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-12-26"
                         }
                     }
                 ],

@@ -61,6 +61,16 @@ class Item extends Model
         return $this->hasMany(ItemPhoto::class)->orderBy('sort_order');
     }
 
+    /**
+     * Booking yang menempati item ini. Dipakai katalog publik untuk menyaring
+     * villa berdasarkan tanggal — dipasangkan dengan scope `blocking()` dan
+     * `overlapping()` di Booking, jangan menulis ulang aturan bentroknya.
+     */
+    public function bookings(): HasMany
+    {
+        return $this->hasMany(Booking::class);
+    }
+
     public function addons(): MorphToMany
     {
         return $this->morphToMany(Addon::class, 'linkable', 'addon_links');
