@@ -53,6 +53,7 @@ Route::middleware('tenant.public')->group(function () {
     // auth:sanctum akan mematikan alur "lanjutkan tanpa akun".
     Route::get('/villas/{slug}/availability', [VillaController::class, 'availability']);
     Route::get('/villas/{slug}/quote', [VillaController::class, 'quote']);
+    Route::get('/villas/{slug}/survey-slots', [VillaController::class, 'surveySlots']);
 });
 
 /*

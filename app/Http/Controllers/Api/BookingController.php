@@ -12,9 +12,11 @@ use App\Models\Addon;
 use App\Models\Booking;
 use App\Models\Guest;
 use App\Models\Item;
+use App\Models\Survey;
 use App\Support\BookingAvailability;
 use App\Support\BookingCode;
 use App\Support\BookingPricing;
+use App\Support\SurveySlots;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -212,6 +214,10 @@ class BookingController extends Controller
             return $error;
         }
 
+        if ($error = $this->validateSurvey($request, $checkIn)) {
+            return $error;
+        }
+
         $booking = DB::transaction(function () use ($request, $item, $checkIn, $checkOut) {
             $stay = BookingPricing::forStay($item, $checkIn, $checkOut);
 
@@ -242,6 +248,17 @@ class BookingController extends Controller
                 'source' => 'admin',
                 'notes' => $request->input('notes'),
             ]);
+
+            if ($request->filled('survey')) {
+                Survey::create([
+                    'item_id' => $item->id,
+                    'booking_id' => $booking->id,
+                    'scheduled_date' => $request->input('survey.date'),
+                    'session' => $request->input('survey.session'),
+                    'status' => Survey::STATUS_DIJADWALKAN,
+                    'notes' => $request->input('survey.notes'),
+                ]);
+            }
 
             foreach ($addonPricing['lines'] as $line) {
                 $booking->addons()->create($line);
@@ -409,6 +426,36 @@ class BookingController extends Controller
      * Nomor jadi kunci alami supaya tamu berulang tidak terpecah jadi banyak
      * baris di CRM (Fase 7).
      */
+    /**
+     * Slot survey yang dipilih di layar A5 diperiksa ULANG di sini.
+     *
+     * Daftar yang dilihat pengunjung bisa sudah basi beberapa menit kemudian —
+     * orang lain mengambil slot yang sama, atau prosesnya berlarut sampai
+     * melewati batas H-7. Aturannya sendiri tidak disalin: `SurveySlots` yang
+     * sama dipakai untuk menyusun daftar dan untuk memverifikasi pilihan.
+     */
+    private function validateSurvey(StoreBookingRequest $request, string $checkIn): ?JsonResponse
+    {
+        if (! $request->filled('survey')) {
+            return null;
+        }
+
+        $bookable = SurveySlots::isBookable(
+            $request->input('survey.date'),
+            $request->input('survey.session'),
+            $checkIn,
+        );
+
+        if (! $bookable) {
+            return $this->error(
+                'Jadwal survey itu sudah tidak tersedia. Silakan pilih slot lain.',
+                422,
+            );
+        }
+
+        return null;
+    }
+
     private function resolveGuest(StoreBookingRequest $request): Guest
     {
         $phone = $request->input('guest_phone');

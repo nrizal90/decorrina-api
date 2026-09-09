@@ -58,6 +58,14 @@ class StoreBookingRequest extends FormRequest
             'addons.*.addon_id' => ['required', 'integer', 'distinct', new ExistsInTenant('addons')],
             'addons.*.qty' => ['sometimes', 'integer', 'min:1', 'max:99'],
 
+            // Jadwal survey (A5) ikut dikirim bersama booking, bukan disimpan
+            // lebih dulu: pengunjung memilih slot SEBELUM booking-nya ada, jadi
+            // barisnya baru dibuat setelah booking benar-benar jadi.
+            'survey' => ['nullable', 'array'],
+            'survey.date' => ['required_with:survey', 'date_format:Y-m-d'],
+            'survey.session' => ['required_with:survey', 'string', 'max:30'],
+            'survey.notes' => ['nullable', 'string'],
+
             'notes' => ['nullable', 'string'],
         ];
     }

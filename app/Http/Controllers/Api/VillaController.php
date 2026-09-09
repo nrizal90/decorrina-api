@@ -6,12 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Villa\AvailabilityRequest;
 use App\Http\Requests\Villa\IndexVillaRequest;
 use App\Http\Requests\Villa\QuoteRequest;
+use App\Http\Requests\Villa\SurveySlotRequest;
 use App\Http\Resources\VillaDetailResource;
 use App\Http\Resources\VillaResource;
 use App\Models\Booking;
 use App\Models\Category;
 use App\Support\BookingAvailability;
 use App\Support\BookingPricing;
+use App\Support\SurveySlots;
 use Carbon\CarbonPeriod;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -261,6 +263,58 @@ class VillaController extends Controller
             // Rentangnya masih bisa direbut orang lain sebelum pembayaran;
             // ini jawaban saat ditanya, bukan penguncian.
             'available' => BookingAvailability::isAvailable($item->id, $checkIn, $checkOut),
+        ]);
+    }
+
+    #[OA\Get(
+        path: '/api/villas/{slug}/survey-slots',
+        tags: ['Katalog Publik'],
+        summary: 'Slot survey lokasi yang tersedia (A5)',
+        description: <<<'TXT'
+        Jadwal survey yang masih bisa dipilih untuk sebuah rencana check-in.
+
+        Slot tidak disimpan sebagai baris di database: sesi (Pagi/Siang) dan
+        aturan tanggalnya ada di config/survey.php, dan yang ditabelkan hanya
+        slot yang sudah dipesan. Batasnya H-7 sebelum check-in dan paling cepat
+        H+2 dari hari ini.
+
+        `deadline` selalu dikembalikan supaya layar bisa menjelaskan MENGAPA
+        daftarnya kosong ketika check-in sudah terlalu dekat.
+        TXT,
+        parameters: [
+            new OA\Parameter(name: 'slug', in: 'path', required: true, schema: new OA\Schema(type: 'string')),
+            new OA\Parameter(name: 'check_in', in: 'query', required: true, schema: new OA\Schema(type: 'string', format: 'date')),
+            new OA\Parameter(name: 'item_id', in: 'query', description: 'Bila diisi, `requires_survey` item itu ikut dikembalikan.', schema: new OA\Schema(type: 'integer')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Daftar slot'),
+            new OA\Response(response: 404, description: 'Villa tidak ditemukan', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+        ]
+    )]
+    public function surveySlots(SurveySlotRequest $request, string $slug): JsonResponse
+    {
+        $villa = Category::where('slug', $slug)->firstOrFail();
+        $checkIn = $request->string('check_in')->toString();
+
+        // Layar A5 perlu tahu apakah kamar yang dipilih memang butuh survey,
+        // supaya tidak memaksa pengunjung menjadwalkan yang tidak diperlukan.
+        $requiresSurvey = null;
+
+        if ($request->filled('item_id')) {
+            $item = $villa->activeItems()->whereKey($request->integer('item_id'))->first();
+
+            if ($item === null) {
+                return $this->error('Item tidak ditemukan pada villa ini.', 404);
+            }
+
+            $requiresSurvey = (bool) $item->requires_survey;
+        }
+
+        return $this->ok([
+            'check_in' => $checkIn,
+            'requires_survey' => $requiresSurvey,
+            'deadline' => SurveySlots::deadlineFor($checkIn)->toDateString(),
+            'slots' => SurveySlots::availableFor($checkIn),
         ]);
     }
 
