@@ -72,6 +72,10 @@ class AuthController extends Controller
             'name' => $request->validated('name'),
             'email' => $request->validated('email'),
             'password' => Hash::make($request->validated('password')),
+            // Ditulis eksplisit, bukan mengandalkan default kolom: nilai default
+            // hanya berlaku di DB, sehingga instance hasil create() akan
+            // mengembalikan status null di response registrasi.
+            'status' => 'Aktif',
         ]);
 
         // Registrasi publik selalu jadi Customer (role global).

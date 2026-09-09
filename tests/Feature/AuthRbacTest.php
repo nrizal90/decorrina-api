@@ -61,6 +61,29 @@ class AuthRbacTest extends TestCase
         $this->assertNotEmpty($response->json('data.token'));
     }
 
+    /**
+     * Status ikut di response registrasi, bukan null. Default kolom hanya
+     * berlaku di DB — instance hasil create() tidak memuatnya kembali, dan FE
+     * menyimpan payload ini apa adanya sebagai sesi yang sedang berjalan.
+     */
+    public function test_registered_account_is_active_in_the_response(): void
+    {
+        $response = $this->postJson('/api/auth/register', [
+            'name' => 'Tamu',
+            'email' => 'tamu-aktif@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ]);
+
+        $response->assertCreated()->assertJsonPath('data.user.status', 'Aktif');
+
+        // Dan akun itu memang bisa dipakai login — bukan sekadar benar di layar.
+        $this->postJson('/api/auth/login', [
+            'email' => 'tamu-aktif@example.com',
+            'password' => 'password123',
+        ])->assertOk();
+    }
+
     public function test_login_returns_token_and_permissions(): void
     {
         $response = $this->postJson('/api/auth/login', [

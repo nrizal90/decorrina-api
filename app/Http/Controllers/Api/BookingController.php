@@ -329,6 +329,13 @@ class BookingController extends Controller
             return $this->error('Item ini tidak aktif dan tidak bisa dipesan.', 422);
         }
 
+        // Menonaktifkan villa berarti seluruh kamarnya ikut ditutup — item
+        // aktif di bawah kategori nonaktif tetap tidak boleh dipesan. FE sudah
+        // menyaringnya, tapi tanpa cek ini pemanggilan API langsung masih lolos.
+        if ($item->category !== null && $item->category->status !== 'Aktif') {
+            return $this->error('Villa untuk item ini sedang tidak aktif dan tidak bisa dipesan.', 422);
+        }
+
         if ($pax < $item->cap_min || $pax > $item->cap_max) {
             return $this->error(
                 "Jumlah tamu harus antara {$item->cap_min} dan {$item->cap_max} orang untuk item ini.",

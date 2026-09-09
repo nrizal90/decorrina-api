@@ -60,12 +60,20 @@ return [
     |--------------------------------------------------------------------------
     |
     | Here you may specify the default timezone for your application, which
-    | will be used by the PHP date and date-time functions. The timezone
-    | is set to "UTC" by default as it is suitable for most use cases.
+    | will be used by the PHP date and date-time functions.
+    |
+    | Asia/Jakarta (WIB), BUKAN UTC bawaan Laravel. Booking bekerja dengan
+    | tanggal menginap dan penilaian weekday/weekend per malam: dengan UTC,
+    | booking yang dibuat pukul 00:30 WIB tercatat sebagai hari sebelumnya
+    | dan nomor urut tahunan (BookingCode) bisa memakai tahun yang salah
+    | di awal Januari. Operasional klien seluruhnya WIB.
+    |
+    | Defaultnya sengaja tidak "UTC": clone baru tanpa APP_TIMEZONE di .env
+    | harus tetap benar, bukan diam-diam kembali ke perilaku lama.
     |
     */
 
-    'timezone' => 'UTC',
+    'timezone' => env('APP_TIMEZONE', 'Asia/Jakarta'),
 
     /*
     |--------------------------------------------------------------------------

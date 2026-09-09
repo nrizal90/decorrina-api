@@ -294,6 +294,21 @@ class BookingTest extends TestCase
         ]))->assertStatus(422);
     }
 
+    /**
+     * Menonaktifkan villa harus menutup seluruh kamarnya. Layar admin sudah
+     * menyaring, tapi penjagaannya harus di backend — jalur API langsung
+     * sebelumnya masih meloloskan item aktif di bawah kategori nonaktif.
+     */
+    public function test_item_of_inactive_category_cannot_be_booked(): void
+    {
+        $item = $this->item();
+        $item->category->update(['status' => 'Nonaktif']);
+
+        $this->postJson('/api/bookings', $this->payload(['item_id' => $item->id]))
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Villa untuk item ini sedang tidak aktif dan tidak bisa dipesan.');
+    }
+
     public function test_backdated_checkin_is_allowed_for_walk_in_guests(): void
     {
         // Booking manual juga dipakai mencatat tamu yang sudah terlanjur
