@@ -3,12 +3,19 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Villa\AvailabilityRequest;
 use App\Http\Requests\Villa\IndexVillaRequest;
+use App\Http\Requests\Villa\QuoteRequest;
 use App\Http\Resources\VillaDetailResource;
 use App\Http\Resources\VillaResource;
+use App\Models\Booking;
 use App\Models\Category;
+use App\Support\BookingAvailability;
+use App\Support\BookingPricing;
+use Carbon\CarbonPeriod;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Carbon;
 use OpenApi\Attributes as OA;
 
 /**
@@ -126,6 +133,156 @@ class VillaController extends Controller
             ->firstOrFail();
 
         return $this->ok(new VillaDetailResource($villa));
+    }
+
+    #[OA\Get(
+        path: '/api/villas/{slug}/availability',
+        tags: ['Katalog Publik'],
+        summary: 'Tanggal terisi per item (A4)',
+        description: <<<'TXT'
+        Malam yang sudah terisi untuk tiap item aktif sebuah villa, dipakai
+        kalender pilih tanggal. Tanpa autentikasi - pengunjung anonim juga
+        memesan lewat layar ini.
+
+        Yang dikembalikan adalah MALAM MENGINAP, bukan rentang booking: booking
+        14-16 mengisi malam 14 dan 15, sedangkan 16 tetap bisa dipesan sebagai
+        check-in. Frontend cukup menandai tanggal di daftar ini sebagai tidak
+        tersedia, tanpa menghitung ulang aturan bentrok.
+
+        `fully_booked_nights` adalah irisan seluruh item: malam ketika villa
+        tidak punya satu pun kamar tersisa.
+        TXT,
+        parameters: [
+            new OA\Parameter(name: 'slug', in: 'path', required: true, schema: new OA\Schema(type: 'string')),
+            new OA\Parameter(name: 'from', in: 'query', description: 'Awal jendela (Y-m-d). Default hari ini.', schema: new OA\Schema(type: 'string', format: 'date')),
+            new OA\Parameter(name: 'to', in: 'query', description: 'Akhir jendela (Y-m-d). Default 6 bulan, dipangkas maksimal 366 hari.', schema: new OA\Schema(type: 'string', format: 'date')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Ketersediaan per item'),
+            new OA\Response(response: 404, description: 'Villa tidak ditemukan', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+        ]
+    )]
+    public function availability(AvailabilityRequest $request, string $slug): JsonResponse
+    {
+        $villa = Category::where('slug', $slug)->firstOrFail();
+        $items = $villa->activeItems()->orderBy('price_weekday')->get();
+
+        $from = $request->from();
+        $to = $request->to();
+
+        $bookings = Booking::query()
+            ->whereIn('item_id', $items->pluck('id'))
+            ->blocking()
+            ->overlapping($from->toDateString(), $to->toDateString())
+            ->get(['item_id', 'check_in', 'check_out']);
+
+        $nightsByItem = $items->mapWithKeys(fn ($item) => [$item->id => collect()]);
+
+        foreach ($bookings as $booking) {
+            foreach ($this->nightsWithin($booking, $from, $to) as $night) {
+                $nightsByItem[$booking->item_id][] = $night;
+            }
+        }
+
+        $payload = $items->map(fn ($item) => [
+            'id' => $item->id,
+            'name' => $item->name,
+            'cap_min' => $item->cap_min,
+            'cap_max' => $item->cap_max,
+            'price_weekday' => $item->price_weekday,
+            'price_weekend' => $item->price_weekend,
+            'booked_nights' => $nightsByItem[$item->id]->unique()->sort()->values(),
+        ]);
+
+        // Irisan, bukan gabungan: satu kamar terisi tidak membuat villa penuh.
+        $fullyBooked = $items->isEmpty()
+            ? collect()
+            : $nightsByItem
+                ->reduce(fn ($shared, $nights) => $shared === null
+                    ? $nights->unique()
+                    : $shared->intersect($nights->unique()))
+                ->sort()
+                ->values();
+
+        return $this->ok([
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'items' => $payload,
+            'fully_booked_nights' => $fullyBooked,
+        ]);
+    }
+
+    #[OA\Get(
+        path: '/api/villas/{slug}/quote',
+        tags: ['Katalog Publik'],
+        summary: 'Rincian harga satu rencana menginap (A4)',
+        description: <<<'TXT'
+        Menghitung malam weekday/weekend dan subtotal untuk satu item pada
+        rentang tanggal tertentu, memakai `BookingPricing` yang sama dengan
+        yang dipakai saat booking dibuat.
+
+        Ada supaya frontend tidak menyalin aturan tarif. Definisi malam weekend
+        (Sabtu & Minggu) hanya hidup di satu tempat, dan angka yang dilihat
+        pengunjung dijamin sama dengan yang akan ditagihkan.
+        TXT,
+        parameters: [
+            new OA\Parameter(name: 'slug', in: 'path', required: true, schema: new OA\Schema(type: 'string')),
+            new OA\Parameter(name: 'item_id', in: 'query', required: true, schema: new OA\Schema(type: 'integer')),
+            new OA\Parameter(name: 'check_in', in: 'query', required: true, schema: new OA\Schema(type: 'string', format: 'date')),
+            new OA\Parameter(name: 'check_out', in: 'query', required: true, schema: new OA\Schema(type: 'string', format: 'date')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Rincian harga'),
+            new OA\Response(response: 404, description: 'Villa atau item tidak ditemukan', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+        ]
+    )]
+    public function quote(QuoteRequest $request, string $slug): JsonResponse
+    {
+        $villa = Category::where('slug', $slug)->firstOrFail();
+
+        // Item WAJIB milik villa di URL: tanpa ini, tarif kamar villa lain bisa
+        // ditanyakan lewat slug mana pun dan angkanya terlihat sah.
+        $item = $villa->activeItems()->whereKey($request->integer('item_id'))->first();
+
+        if ($item === null) {
+            return $this->error('Item tidak ditemukan pada villa ini.', 404);
+        }
+
+        $checkIn = $request->string('check_in')->toString();
+        $checkOut = $request->string('check_out')->toString();
+
+        $pricing = BookingPricing::forStay($item, $checkIn, $checkOut);
+
+        return $this->ok([
+            'item' => ['id' => $item->id, 'name' => $item->name],
+            'check_in' => $checkIn,
+            'check_out' => $checkOut,
+            ...$pricing,
+            // Rentangnya masih bisa direbut orang lain sebelum pembayaran;
+            // ini jawaban saat ditanya, bukan penguncian.
+            'available' => BookingAvailability::isAvailable($item->id, $checkIn, $checkOut),
+        ]);
+    }
+
+    /**
+     * Malam menginap sebuah booking yang jatuh di dalam jendela yang diminta.
+     *
+     * Malam terakhir adalah H-1 check-out - tamu tidak menginap pada malam
+     * tanggal check-out, aturan yang sama dengan scope `overlapping`.
+     *
+     * @return array<int, string>
+     */
+    private function nightsWithin(Booking $booking, Carbon $from, Carbon $to): array
+    {
+        $nights = [];
+
+        foreach (CarbonPeriod::create($booking->check_in, $booking->check_out)->excludeEndDate() as $night) {
+            if ($night->betweenIncluded($from, $to)) {
+                $nights[] = $night->toDateString();
+            }
+        }
+
+        return $nights;
     }
 
     /**

@@ -47,6 +47,12 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
 Route::middleware('tenant.public')->group(function () {
     Route::get('/villas', [VillaController::class, 'index']);
     Route::get('/villas/{slug}', [VillaController::class, 'show']);
+
+    // Kalender pilih tanggal (A4). Publik seperti katalognya: pengunjung
+    // anonim memesan lewat layar yang sama, jadi menaruhnya di belakang
+    // auth:sanctum akan mematikan alur "lanjutkan tanpa akun".
+    Route::get('/villas/{slug}/availability', [VillaController::class, 'availability']);
+    Route::get('/villas/{slug}/quote', [VillaController::class, 'quote']);
 });
 
 /*
