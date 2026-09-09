@@ -1808,7 +1808,7 @@
                     "Katalog Publik"
                 ],
                 "summary": "Daftar villa (A2)",
-                "description": "Katalog villa untuk halaman listing. Tidak butuh autentikasi.\r\n\r\nKategori nonaktif ATAU yang belum punya item aktif tetap dikembalikan,\r\nditandai `coming_soon: true` dengan `price_from: null` — frontend\r\nmenampilkannya diredupkan dengan label \"Segera hadir\" (lihat kartu\r\nWisata Camping). Menyaringnya di server akan menghilangkan kartu itu.\r\n\r\n`price_from` dan `capacity` dihitung dari item aktif, bukan kolom\r\ntersimpan di kategori.\r\n\r\nFilter `cap_*` dan `check_in` digabung pada item yang SAMA: villa lolos\r\nbila punya satu item aktif yang muat rombongan itu sekaligus bebas pada\r\ntanggal itu. Perlu diketahui, memakai filter apa pun akan menyingkirkan\r\nkartu `coming_soon` — kategori tanpa item aktif tidak bisa memenuhi\r\nsyarat mana pun.",
+                "description": "Katalog villa untuk halaman listing. Tidak butuh autentikasi.\n\nKategori nonaktif ATAU yang belum punya item aktif tetap dikembalikan,\nditandai `coming_soon: true` dengan `price_from: null` — frontend\nmenampilkannya diredupkan dengan label \"Segera hadir\" (lihat kartu\nWisata Camping). Menyaringnya di server akan menghilangkan kartu itu.\n\n`price_from` dan `capacity` dihitung dari item aktif, bukan kolom\ntersimpan di kategori.\n\nFilter `cap_*` dan `check_in` digabung pada item yang SAMA: villa lolos\nbila punya satu item aktif yang muat rombongan itu sekaligus bebas pada\ntanggal itu. Perlu diketahui, memakai filter apa pun akan menyingkirkan\nkartu `coming_soon` — kategori tanpa item aktif tidak bisa memenuhi\nsyarat mana pun.",
                 "operationId": "1be66933b76af35ba506c7510f579df9",
                 "parameters": [
                     {
@@ -1937,6 +1937,120 @@
                     },
                     "404": {
                         "description": "Villa atau tenant tidak ditemukan",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/villas/{slug}/availability": {
+            "get": {
+                "tags": [
+                    "Katalog Publik"
+                ],
+                "summary": "Tanggal terisi per item (A4)",
+                "description": "Malam yang sudah terisi untuk tiap item aktif sebuah villa, dipakai\nkalender pilih tanggal. Tanpa autentikasi - pengunjung anonim juga\nmemesan lewat layar ini.\n\nYang dikembalikan adalah MALAM MENGINAP, bukan rentang booking: booking\n14-16 mengisi malam 14 dan 15, sedangkan 16 tetap bisa dipesan sebagai\ncheck-in. Frontend cukup menandai tanggal di daftar ini sebagai tidak\ntersedia, tanpa menghitung ulang aturan bentrok.\n\n`fully_booked_nights` adalah irisan seluruh item: malam ketika villa\ntidak punya satu pun kamar tersisa.",
+                "operationId": "7d26a1428839da61c7bc21c47051f02e",
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "description": "Awal jendela (Y-m-d). Default hari ini.",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "description": "Akhir jendela (Y-m-d). Default 6 bulan, dipangkas maksimal 366 hari.",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ketersediaan per item"
+                    },
+                    "404": {
+                        "description": "Villa tidak ditemukan",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/villas/{slug}/quote": {
+            "get": {
+                "tags": [
+                    "Katalog Publik"
+                ],
+                "summary": "Rincian harga satu rencana menginap (A4)",
+                "description": "Menghitung malam weekday/weekend dan subtotal untuk satu item pada\nrentang tanggal tertentu, memakai `BookingPricing` yang sama dengan\nyang dipakai saat booking dibuat.\n\nAda supaya frontend tidak menyalin aturan tarif. Definisi malam weekend\n(Sabtu & Minggu) hanya hidup di satu tempat, dan angka yang dilihat\npengunjung dijamin sama dengan yang akan ditagihkan.",
+                "operationId": "21389c1460a3160b44b347d4741b3798",
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "item_id",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "check_in",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "check_out",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Rincian harga"
+                    },
+                    "404": {
+                        "description": "Villa atau item tidak ditemukan",
                         "content": {
                             "application/json": {
                                 "schema": {

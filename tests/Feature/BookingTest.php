@@ -309,6 +309,70 @@ class BookingTest extends TestCase
             ->assertJsonPath('message', 'Villa untuk item ini sedang tidak aktif dan tidak bisa dipesan.');
     }
 
+    // ------------------------------------------------ profil tamu (form A6)
+
+    /**
+     * Form A6 meminta lebih dari nama & telepon. Kolomnya ditambahkan agar
+     * data yang diisi tamu tidak hilang di tengah jalan.
+     */
+    public function test_guest_profile_fields_are_saved(): void
+    {
+        $booking = $this->createBooking([
+            'guest_email' => 'rina@example.com',
+            'guest_birth_date' => '1995-04-17',
+            'guest_origin' => 'Bandung, Jawa Barat',
+            'guest_type' => 'Instansi',
+            'vehicle_count' => 3,
+        ]);
+
+        $guest = $booking->guest;
+
+        $this->assertSame('1995-04-17', $guest->birth_date->toDateString());
+        $this->assertSame('Bandung, Jawa Barat', $guest->origin);
+        $this->assertSame('Instansi', $guest->guest_type);
+        // Jumlah kendaraan melekat pada kunjungan, bukan pada orangnya.
+        $this->assertSame(3, $booking->vehicle_count);
+    }
+
+    /** Booking manual B3 hanya mengisi nama & telepon — harus tetap sah. */
+    public function test_guest_profile_fields_are_optional(): void
+    {
+        $booking = $this->createBooking();
+
+        $this->assertNull($booking->guest->birth_date);
+        $this->assertNull($booking->vehicle_count);
+    }
+
+    /**
+     * Tamu yang kembali memesan tidak boleh kehilangan profil lamanya hanya
+     * karena form kali ini dibiarkan kosong.
+     */
+    public function test_existing_guest_profile_is_not_wiped_by_a_later_booking(): void
+    {
+        $this->createBooking([
+            'guest_origin' => 'Bandung, Jawa Barat',
+            'guest_type' => 'Pribadi',
+        ]);
+
+        // Telepon sama -> tamu yang sama, kali ini tanpa profil.
+        $second = $this->createBooking(['check_in' => '2026-09-10', 'check_out' => '2026-09-12']);
+
+        $this->assertSame('Bandung, Jawa Barat', $second->guest->origin);
+        $this->assertSame('Pribadi', $second->guest->guest_type);
+    }
+
+    public function test_invalid_guest_type_is_rejected(): void
+    {
+        $this->postJson('/api/bookings', $this->payload(['guest_type' => 'Perusahaan']))
+            ->assertStatus(422);
+    }
+
+    public function test_future_birth_date_is_rejected(): void
+    {
+        $this->postJson('/api/bookings', $this->payload(['guest_birth_date' => now()->addDay()->toDateString()]))
+            ->assertStatus(422);
+    }
+
     public function test_backdated_checkin_is_allowed_for_walk_in_guests(): void
     {
         // Booking manual juga dipakai mencatat tamu yang sudah terlanjur

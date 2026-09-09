@@ -16,12 +16,25 @@ class Guest extends Model
 {
     use BelongsToTenant, SoftDeletes;
 
+    /** Nilai `guest_type` — label persis seperti di form A6. */
+    public const TYPES = ['Pribadi', 'Instansi'];
+
     protected $fillable = [
         'user_id',
         'name',
         'phone',
         'email',
+        'birth_date',
+        'origin',
+        'guest_type',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'birth_date' => 'date',
+        ];
+    }
 
     public function bookings(): HasMany
     {

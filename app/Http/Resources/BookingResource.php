@@ -27,6 +27,9 @@ class BookingResource extends JsonResource
                 'name' => $this->guest?->name,
                 'phone' => $this->guest?->phone,
                 'email' => $this->guest?->email,
+                'birth_date' => $this->guest?->birth_date?->toDateString(),
+                'origin' => $this->guest?->origin,
+                'guest_type' => $this->guest?->guest_type,
             ],
 
             'item' => [
@@ -39,6 +42,7 @@ class BookingResource extends JsonResource
             'check_out' => $this->check_out?->toDateString(),
             'nights' => $this->nights,
             'pax' => $this->pax,
+            'vehicle_count' => $this->vehicle_count,
 
             'subtotal_item' => $this->subtotal_item,
             'subtotal_addons' => $this->subtotal_addons,

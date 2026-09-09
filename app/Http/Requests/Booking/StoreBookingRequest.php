@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests\Booking;
 
+use App\Models\Guest;
 use App\Rules\ExistsInTenant;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * Booking manual oleh admin (B3). Otorisasi ditangani middleware `rbac`
@@ -28,6 +30,13 @@ class StoreBookingRequest extends FormRequest
             'guest_phone' => ['nullable', 'string', 'max:30'],
             'guest_email' => ['nullable', 'email', 'max:255'],
 
+            // Profil tamu dari form A6. Semuanya opsional: booking manual B3
+            // hanya mengisi nama & telepon, dan tamu walk-in yang dicatat
+            // susulan sering tidak punya data selengkap ini.
+            'guest_birth_date' => ['nullable', 'date_format:Y-m-d', 'before:today'],
+            'guest_origin' => ['nullable', 'string', 'max:255'],
+            'guest_type' => ['nullable', Rule::in(Guest::TYPES)],
+
             // SENGAJA tanpa `after_or_equal:today`. Booking manual juga dipakai
             // mencatat tamu walk-in yang sudah terlanjur menginap, jadi tanggal
             // lampau harus tetap boleh. Jangan tambahkan aturan itu tanpa
@@ -38,6 +47,9 @@ class StoreBookingRequest extends FormRequest
             'check_out' => ['required', 'date_format:Y-m-d', 'after:check_in'],
 
             'pax' => ['required', 'integer', 'min:1'],
+            // Milik satu kali menginap, bukan milik tamunya: rombongan yang
+            // sama bisa datang dengan jumlah kendaraan berbeda tiap kunjungan.
+            'vehicle_count' => ['nullable', 'integer', 'min:0', 'max:99'],
 
             'addons' => ['sometimes', 'array'],
             // `distinct`: satu add-on hanya boleh muncul sekali. Tanpa ini,

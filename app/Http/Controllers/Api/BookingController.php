@@ -229,6 +229,7 @@ class BookingController extends Controller
                 'check_out' => $checkOut,
                 'nights' => $stay['nights'],
                 'pax' => $request->integer('pax'),
+                'vehicle_count' => $request->input('vehicle_count'),
                 // Snapshot harga & kebijakan pembayaran item saat ini.
                 'price_weekday' => $item->price_weekday,
                 'price_weekend' => $item->price_weekend,
@@ -417,9 +418,14 @@ class BookingController extends Controller
 
             if ($existing) {
                 // Lengkapi data yang sebelumnya kosong, jangan menimpa yang ada.
+                // Tamu yang kembali memesan tidak boleh kehilangan profil lamanya
+                // hanya karena form kali ini dibiarkan kosong.
                 $existing->fill(array_filter([
                     'name' => $existing->name ?: $request->input('guest_name'),
                     'email' => $existing->email ?: $request->input('guest_email'),
+                    'birth_date' => $existing->birth_date ?: $request->input('guest_birth_date'),
+                    'origin' => $existing->origin ?: $request->input('guest_origin'),
+                    'guest_type' => $existing->guest_type ?: $request->input('guest_type'),
                 ]))->save();
 
                 return $existing;
@@ -430,6 +436,9 @@ class BookingController extends Controller
             'name' => $request->input('guest_name'),
             'phone' => $phone,
             'email' => $request->input('guest_email'),
+            'birth_date' => $request->input('guest_birth_date'),
+            'origin' => $request->input('guest_origin'),
+            'guest_type' => $request->input('guest_type'),
         ]);
     }
 }
