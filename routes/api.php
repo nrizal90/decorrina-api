@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\FacilityController;
+use App\Http\Controllers\Api\GuestController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\ItemController;
 use App\Http\Controllers\Api\PublicBookingController;
@@ -93,6 +94,13 @@ Route::middleware(['auth:sanctum', 'tenant', 'rbac'])->group(function () {
     Route::get('/bookings/availability', [BookingController::class, 'availability'])->name('bookings:availability');
     Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('bookings:show');
     Route::patch('/bookings/{booking}/status', [BookingController::class, 'updateStatus'])->name('bookings:update-status');
+
+    /*
+    | Profil Tamu / CRM (B8, Fase 7) — hanya baca. Tamu lahir otomatis dari
+    | booking; tidak ada store/update/destroy di sini.
+    */
+    Route::get('/guests', [GuestController::class, 'index'])->name('guests:index');
+    Route::get('/guests/{guest}', [GuestController::class, 'show'])->name('guests:show');
 
     /*
     | Survey lokasi (B4, Fase 5). Survey dari jalur customer (A5) ikut tampil

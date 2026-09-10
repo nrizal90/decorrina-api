@@ -6,6 +6,7 @@ use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -39,6 +40,15 @@ class Guest extends Model
     public function bookings(): HasMany
     {
         return $this->hasMany(Booking::class);
+    }
+
+    /**
+     * Booking paling baru — untuk angka "jumlah tamu / kendaraan" di profil,
+     * yang memang milik satu kali kunjungan, bukan sifat tetap tamunya.
+     */
+    public function latestBooking(): HasOne
+    {
+        return $this->hasOne(Booking::class)->latestOfMany('check_in');
     }
 
     public function user(): BelongsTo
