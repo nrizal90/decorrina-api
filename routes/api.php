@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\GuestController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\ItemController;
 use App\Http\Controllers\Api\PublicBookingController;
+use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\SurveyController;
 use App\Http\Controllers\Api\UserController;
@@ -94,6 +95,12 @@ Route::middleware(['auth:sanctum', 'tenant', 'rbac'])->group(function () {
     Route::get('/bookings/availability', [BookingController::class, 'availability'])->name('bookings:availability');
     Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('bookings:show');
     Route::patch('/bookings/{booking}/status', [BookingController::class, 'updateStatus'])->name('bookings:update-status');
+
+    /*
+    | Laporan & Analitik (B10, Fase 8). Satu endpoint untuk tiga tab —
+    | permission-nya satu dan nama route = nama permission.
+    */
+    Route::get('/reports', [ReportController::class, 'index'])->name('reports:view');
 
     /*
     | Profil Tamu / CRM (B8, Fase 7) — hanya baca. Tamu lahir otomatis dari
