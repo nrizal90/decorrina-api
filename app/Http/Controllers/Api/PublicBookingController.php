@@ -6,12 +6,14 @@ use App\Http\Concerns\ApiResponses;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Booking\PublicStoreBookingRequest;
 use App\Http\Resources\BookingResource;
+use App\Models\Booking;
 use App\Models\Item;
 use App\Support\AddonPolicy;
 use App\Support\BookingAvailability;
 use App\Support\BookingCreator;
 use App\Support\SurveySlots;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 /**
  * Booking yang dibuat sendiri oleh pengunjung (A6–A10).
@@ -83,6 +85,64 @@ class PublicBookingController extends Controller
             new BookingResource($booking->load(['item.category', 'guest', 'addons.addon'])),
             'Booking berhasil dibuat. Selesaikan pembayaran untuk mengonfirmasinya.',
         );
+    }
+
+    /**
+     * Cek status booking (A15) untuk pengunjung tanpa akun.
+     *
+     * Kode booking SAJA tidak cukup: formatnya berurutan (DCG-2026-00001,
+     * 00002, ...) sehingga bisa ditebak, dan isinya nama serta tanggal
+     * menginap orang lain. Kontak yang dipakai saat memesan (telepon atau
+     * email) harus ikut cocok. Ketidakcocokan apa pun dijawab dengan pesan
+     * yang sama — jangan beri tahu penebak bahwa kodenya benar.
+     */
+    public function lookup(Request $request): JsonResponse
+    {
+        $request->validate([
+            'code' => ['required', 'string', 'max:30'],
+            'contact' => ['required', 'string', 'max:255'],
+        ]);
+
+        $code = strtoupper(trim($request->string('code')->toString()));
+        $contact = self::normalizeContact($request->string('contact')->toString());
+
+        $booking = Booking::query()
+            ->with(['item.category', 'guest', 'addons.addon'])
+            ->where('kode_booking', $code)
+            ->first();
+
+        $matches = $booking !== null && $booking->guest !== null && (
+            self::normalizeContact((string) $booking->guest->phone) === $contact
+            || self::normalizeContact((string) $booking->guest->email) === $contact
+        );
+
+        if (! $matches) {
+            return $this->error('Kode booking atau kontak tidak cocok. Pastikan data yang dimasukkan benar.', 404);
+        }
+
+        return $this->ok(new BookingResource($booking));
+    }
+
+    /**
+     * Telepon disamakan bentuknya sebelum dibandingkan: "0812-3456", "+62 812
+     * 3456", dan "62 812 3456" adalah nomor yang sama. Email cukup huruf kecil.
+     */
+    private static function normalizeContact(string $value): string
+    {
+        $value = strtolower(trim($value));
+
+        if (str_contains($value, '@')) {
+            return $value;
+        }
+
+        $digits = preg_replace('/\D+/', '', $value) ?? '';
+
+        // +62 / 62 -> 0, supaya cocok dengan cara orang menulis nomor lokal.
+        if (str_starts_with($digits, '62')) {
+            $digits = '0'.substr($digits, 2);
+        }
+
+        return $digits;
     }
 
     /**

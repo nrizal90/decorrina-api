@@ -203,6 +203,53 @@ class PublicBookingTest extends TestCase
             ->assertStatus(422);
     }
 
+    // ------------------------------------------------------ cek status (A15)
+
+    private function lookup(string $code, string $contact)
+    {
+        return $this->withHeader('X-Tenant', 'decorinna')
+            ->getJson('/api/public/bookings/lookup?'.http_build_query(['code' => $code, 'contact' => $contact]));
+    }
+
+    public function test_lookup_finds_a_booking_by_code_and_phone(): void
+    {
+        $code = $this->book(['guest_phone' => '081234567890', 'guest_email' => 'rina@example.com'])->json('data.kode_booking');
+
+        $this->lookup($code, '081234567890')->assertOk()->assertJsonPath('data.kode_booking', $code);
+        $this->lookup($code, 'rina@example.com')->assertOk();
+    }
+
+    /** "0812...", "+62 812...", "62-812..." adalah nomor yang sama. */
+    public function test_lookup_normalizes_phone_and_email_formatting(): void
+    {
+        $code = $this->book(['guest_phone' => '081234567890', 'guest_email' => 'rina@example.com'])->json('data.kode_booking');
+
+        $this->lookup(strtolower($code), '+62 812-3456-7890')->assertOk();
+        $this->lookup($code, '62812 3456 7890')->assertOk();
+        $this->lookup($code, 'RINA@Example.com')->assertOk();
+    }
+
+    /**
+     * Kode benar tapi kontak salah HARUS terlihat sama dengan kode salah:
+     * kodenya berurutan dan mudah ditebak, jangan konfirmasi ke penebak.
+     */
+    public function test_lookup_does_not_reveal_whether_the_code_exists(): void
+    {
+        $code = $this->book()->json('data.kode_booking');
+
+        $wrongContact = $this->lookup($code, '080000000000')->assertStatus(404);
+        $wrongCode = $this->lookup('DCG-2026-99999', '081234567890')->assertStatus(404);
+
+        $this->assertSame($wrongContact->json('message'), $wrongCode->json('message'));
+    }
+
+    public function test_lookup_requires_both_fields(): void
+    {
+        $this->withHeader('X-Tenant', 'decorinna')
+            ->getJson('/api/public/bookings/lookup?code=DCG-2026-00001')
+            ->assertStatus(422);
+    }
+
     // ------------------------------------------------------------- survey
 
     public function test_booking_carries_the_chosen_survey_slot(): void

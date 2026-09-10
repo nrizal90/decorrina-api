@@ -69,6 +69,11 @@ Route::middleware('tenant.public')->group(function () {
     */
     Route::post('/public/bookings', [PublicBookingController::class, 'store'])
         ->middleware('throttle:10,1');
+
+    // Cek status booking (A15). Throttle lebih ketat: ini pintu yang bisa
+    // dipakai menebak kode + kontak orang lain.
+    Route::get('/public/bookings/lookup', [PublicBookingController::class, 'lookup'])
+        ->middleware('throttle:6,1');
 });
 
 /*
