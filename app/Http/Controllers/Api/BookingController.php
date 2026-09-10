@@ -13,9 +13,11 @@ use App\Models\Item;
 use App\Support\AddonPolicy;
 use App\Support\BookingAvailability;
 use App\Support\BookingCreator;
+use App\Support\Ledger;
 use App\Support\SurveySlots;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
 
 /**
@@ -285,7 +287,12 @@ class BookingController extends Controller
             );
         }
 
-        $booking->update(['status' => $target]);
+        // Status dan buku kas berubah bersama atau tidak sama sekali — jangan
+        // sampai booking tercatat Lunas tanpa pemasukannya, atau sebaliknya.
+        DB::transaction(function () use ($booking, $target) {
+            $booking->update(['status' => $target]);
+            Ledger::recordForStatus($booking, $target);
+        });
 
         return $this->ok(
             new BookingResource($booking->load(['item.category', 'guest'])),

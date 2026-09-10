@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\FacilityController;
 use App\Http\Controllers\Api\GuestController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\ItemController;
+use App\Http\Controllers\Api\LedgerController;
 use App\Http\Controllers\Api\PublicBookingController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\RoleController;
@@ -95,6 +96,13 @@ Route::middleware(['auth:sanctum', 'tenant', 'rbac'])->group(function () {
     Route::get('/bookings/availability', [BookingController::class, 'availability'])->name('bookings:availability');
     Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('bookings:show');
     Route::patch('/bookings/{booking}/status', [BookingController::class, 'updateStatus'])->name('bookings:update-status');
+
+    /*
+    | Akuntansi & Keuangan (B9, Fase 7). Satu endpoint baca untuk tiga tab
+    | (permission bacanya satu). Staff sengaja tidak punya ledger:* (seeder).
+    */
+    Route::get('/ledger', [LedgerController::class, 'index'])->name('ledger:index');
+    Route::post('/ledger', [LedgerController::class, 'store'])->name('ledger:store');
 
     /*
     | Laporan & Analitik (B10, Fase 8). Satu endpoint untuk tiga tab —
