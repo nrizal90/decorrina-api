@@ -32,6 +32,9 @@ class DynamicRBACMiddleware
         // Cek ketersediaan tanggal hanya membaca data booking, jadi ia ikut
         // permission yang sama dengan daftar booking.
         'bookings:availability' => 'bookings:index',
+        // Dashboard dan laporan satu permission ("Lihat laporan & dashboard"),
+        // tapi dua route tidak boleh berbagi nama.
+        'dashboard:view' => 'reports:view',
     ];
 
     public function handle(Request $request, Closure $next): Response

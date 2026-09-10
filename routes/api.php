@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AddonController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\FacilityController;
 use App\Http\Controllers\Api\GuestController;
 use App\Http\Controllers\Api\HealthController;
@@ -114,6 +115,8 @@ Route::middleware(['auth:sanctum', 'tenant', 'rbac'])->group(function () {
     | permission-nya satu dan nama route = nama permission.
     */
     Route::get('/reports', [ReportController::class, 'index'])->name('reports:view');
+    // Dashboard (B1) — alias ke reports:view, lihat DynamicRBACMiddleware.
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard:view');
 
     /*
     | Profil Tamu / CRM (B8, Fase 7) — hanya baca. Tamu lahir otomatis dari
