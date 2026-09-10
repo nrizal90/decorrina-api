@@ -98,6 +98,49 @@ class SurveySlots
         return $slots;
     }
 
+    /**
+     * Sesi mana yang memuat sebuah jam, bila ada.
+     *
+     * Admin (B4) bebas menuliskan jam berapa pun, sementara customer (A5)
+     * memilih sesi baku. Keduanya memakai tim yang sama, jadi jadwal admin
+     * pukul 09:30 HARUS ikut memakan kuota sesi Pagi — kalau tidak, layar
+     * customer tetap menawarkan slot yang sebenarnya sudah terpakai.
+     *
+     * Jam di luar seluruh sesi (mis. 17:00) mengembalikan null: kunjungan di
+     * luar jam operasional tidak menutup slot mana pun.
+     */
+    public static function sessionForTime(string $time): ?string
+    {
+        $minutes = self::toMinutes($time);
+
+        foreach (config('survey.sessions') as $session) {
+            if ($minutes >= self::toMinutes($session['start']) && $minutes < self::toMinutes($session['end'])) {
+                return $session['code'];
+            }
+        }
+
+        return null;
+    }
+
+    /** Jam mulai sebuah sesi, dipakai saat customer memilih slot baku. */
+    public static function startTimeOf(string $session): ?string
+    {
+        foreach (config('survey.sessions') as $known) {
+            if ($known['code'] === $session) {
+                return $known['start'];
+            }
+        }
+
+        return null;
+    }
+
+    private static function toMinutes(string $time): int
+    {
+        [$hour, $minute] = array_pad(explode(':', $time), 2, '0');
+
+        return ((int) $hour * 60) + (int) $minute;
+    }
+
     private static function isKnownSession(string $session): bool
     {
         foreach (config('survey.sessions') as $known) {

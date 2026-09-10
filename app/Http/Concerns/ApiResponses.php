@@ -68,9 +68,18 @@ trait ApiResponses
      *
      * Menerima LengthAwarePaginator langsung, atau ResourceCollection yang
      * membungkus paginator (mis. UserResource::collection($paginator)).
+     *
+     * `$extra` untuk data pendamping yang bukan bagian dari daftar maupun
+     * meta pagination — mis. `pic_options` di papan survey, yang mengisi
+     * dropdown pada layar yang sama tanpa perlu panggilan kedua.
+     *
+     * @param  array<string, mixed>  $extra
      */
-    protected function paginated(LengthAwarePaginator|ResourceCollection $paginator, string $message = 'OK'): JsonResponse
-    {
+    protected function paginated(
+        LengthAwarePaginator|ResourceCollection $paginator,
+        string $message = 'OK',
+        array $extra = [],
+    ): JsonResponse {
         if ($paginator instanceof ResourceCollection) {
             /** @var LengthAwarePaginator $source */
             $source = $paginator->resource;
@@ -82,7 +91,7 @@ trait ApiResponses
             );
         }
 
-        return response()->json([
+        return response()->json($extra + [
             'success' => true,
             'message' => $message,
             'data' => $items,

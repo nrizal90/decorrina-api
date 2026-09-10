@@ -168,8 +168,14 @@ class SurveySchedulingTest extends TestCase
 
         $this->assertSame($slot['date'], $survey->scheduled_date->toDateString());
         $this->assertSame($slot['session'], $survey->session);
-        $this->assertSame(Survey::STATUS_DIJADWALKAN, $survey->status);
+        $this->assertSame(Survey::STATUS_TERJADWAL, $survey->status);
         $this->assertSame($response->json('data.id'), $survey->booking_id);
+
+        // Jalur customer memilih SESI, tapi papan admin menampilkan jam —
+        // jadi jam mulai sesinya ikut disimpan, bukan dibiarkan kosong.
+        $this->assertSame('09:00', substr((string) $survey->scheduled_time, 0, 5));
+        $this->assertSame($this->item()->category_id, $survey->category_id);
+        $this->assertNotNull($survey->guest_id);
     }
 
     public function test_booking_without_a_survey_creates_none(): void

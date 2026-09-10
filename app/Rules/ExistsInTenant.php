@@ -5,6 +5,7 @@ namespace App\Rules;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Pengganti `exists:{tabel},id` untuk tabel BER-TENANT.
@@ -18,7 +19,10 @@ use Illuminate\Support\Facades\DB;
  *
  * Aturan ini menutupnya dengan menambahkan dua syarat yang selalu terlupa:
  *  1. `tenant_id` harus sama dengan tenant aktif;
- *  2. baris yang sudah di-soft-delete tidak dianggap ada.
+ *  2. baris yang sudah di-soft-delete tidak dianggap ada — hanya untuk tabel
+ *     yang MEMANG punya `deleted_at`. `users` tidak memakai soft delete
+ *     (dinonaktifkan lewat kolom `status`, lihat migrasi add_status_to_users),
+ *     dan menambahkan syarat itu tanpa syarat akan meledak jadi 500.
  *
  * Fail-closed: tanpa konteks tenant, validasi GAGAL — bukan lolos. Pada praktiknya
  * konteks selalu ada untuk request tulis (SetTenantMiddleware mengikatnya dari
@@ -46,7 +50,10 @@ class ExistsInTenant implements ValidationRule
         $exists = DB::table($this->table)
             ->where($this->column, $value)
             ->where('tenant_id', app('currentTenantId'))
-            ->whereNull('deleted_at')
+            ->when(
+                Schema::hasColumn($this->table, 'deleted_at'),
+                fn ($query) => $query->whereNull('deleted_at'),
+            )
             ->exists();
 
         if (! $exists) {

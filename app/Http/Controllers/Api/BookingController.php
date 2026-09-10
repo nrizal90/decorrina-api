@@ -250,12 +250,24 @@ class BookingController extends Controller
             ]);
 
             if ($request->filled('survey')) {
+                $session = $request->input('survey.session');
+
                 Survey::create([
+                    // Villa diturunkan dari item — layar B4 menampilkan kolom
+                    // villa, dan jalur customer selalu tahu kamarnya.
+                    'category_id' => $item->category_id,
                     'item_id' => $item->id,
                     'booking_id' => $booking->id,
+                    'guest_id' => $guest->id,
+                    'guest_name' => $guest->name,
+                    'planned_check_in' => $checkIn,
                     'scheduled_date' => $request->input('survey.date'),
-                    'session' => $request->input('survey.session'),
-                    'status' => Survey::STATUS_DIJADWALKAN,
+                    // Jam disimpan juga, bukan hanya kode sesi: papan admin
+                    // menampilkan "13 Agu 2026, 10:00" untuk semua survey,
+                    // dari jalur mana pun asalnya.
+                    'scheduled_time' => SurveySlots::startTimeOf($session),
+                    'session' => $session,
+                    'status' => Survey::STATUS_TERJADWAL,
                     'notes' => $request->input('survey.notes'),
                 ]);
             }

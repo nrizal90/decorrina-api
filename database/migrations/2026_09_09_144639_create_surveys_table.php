@@ -5,17 +5,21 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Survey lokasi (A5, Fase 5) — kunjungan calon tamu ke lokasi sebelum menginap,
- * untuk item yang `requires_survey`.
+ * Survey lokasi (A5 & B4, Fase 5) — kunjungan calon tamu ke lokasi sebelum
+ * memutuskan menginap.
  *
- * Slotnya TIDAK ditabelkan. Sesi (Pagi/Siang) dan aturan tanggalnya ada di
- * config/survey.php, dan baris di sini hanya muncul ketika sebuah slot benar-
- * benar DIPESAN. Jadi tabel ini adalah daftar janji temu, bukan kalender
- * kosong yang harus diisi lebih dulu.
+ * Tabel ini melayani DUA jalur yang bentuknya berbeda, dan itu yang menjelaskan
+ * banyaknya kolom nullable di sini:
  *
- * `booking_id` nullable karena urutan layarnya memang begitu: pengunjung
- * memilih jadwal survey (A5) SEBELUM mengisi data tamu (A6) dan membayar,
- * sehingga booking-nya belum ada saat slot dipilih.
+ *  1. Customer (A5) — memilih slot Pagi/Siang saat memesan. Terikat item dan
+ *     booking, tapi booking-nya baru ada setelah pembayaran.
+ *  2. Admin (B4) — menjadwalkan sendiri untuk calon tamu yang menghubungi
+ *     lewat WhatsApp. Belum tentu ada booking, item, atau tamu terdaftar;
+ *     jamnya bebas, tidak harus jatuh di sesi baku.
+ *
+ * Slotnya sendiri TIDAK ditabelkan: sesi dan aturan tanggal ada di
+ * config/survey.php, dan baris di sini hanya muncul ketika sebuah jadwal
+ * benar-benar dipesan. Lihat App\Support\SurveySlots.
  */
 return new class extends Migration
 {
@@ -25,19 +29,36 @@ return new class extends Migration
             $table->id();
             $table->foreignId('tenant_id')->constrained()->cascadeOnDelete();
 
-            // Survey menempel pada ITEM, bukan kategori: yang menentukan perlu
-            // tidaknya survey adalah `items.requires_survey`.
-            $table->foreignId('item_id')->constrained()->cascadeOnDelete();
+            // Villa yang disurvei — satu-satunya kolom tujuan yang WAJIB.
+            // Admin menjadwalkan per villa; kamar spesifik sering belum
+            // ditentukan saat survey justru dipakai untuk memilihnya.
+            $table->foreignId('category_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('item_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('booking_id')->nullable()->constrained()->nullOnDelete();
 
-            $table->date('scheduled_date');
-            // 'Pagi' | 'Siang' — kode sesi dari config/survey.php, bukan jam
-            // mentah, supaya jam operasional bisa berubah tanpa migrasi data.
-            $table->string('session');
+            // Tamu terdaftar bila ada; kalau belum, cukup nama/kontak apa
+            // adanya seperti yang diketik admin di modal "Jadwalkan Survey".
+            $table->foreignId('guest_id')->nullable()->constrained()->nullOnDelete();
+            $table->string('guest_name');
 
-            // 'Dijadwalkan' | 'Selesai' | 'Dibatalkan' — string, konsisten
-            // dengan kolom status lain di proyek ini.
-            $table->string('status')->default('Dijadwalkan');
+            // Rencana check-in — dasar aturan H-7. Tanpa booking, tanggal ini
+            // satu-satunya acuan; dengan booking, disalin dari check_in-nya.
+            $table->date('planned_check_in')->nullable();
+
+            $table->date('scheduled_date');
+            $table->time('scheduled_time');
+            // Kode sesi dari config/survey.php ('Pagi'/'Siang'), diturunkan
+            // dari jam. NULL untuk jadwal di luar jam sesi baku — jadwal
+            // seperti itu tidak ikut memakan kuota slot customer.
+            $table->string('session')->nullable();
+
+            // Penanggung jawab room tour. Menunjuk user internal, bukan nama
+            // lepas, supaya riwayat tetap utuh saat orangnya nonaktif.
+            $table->foreignId('pic_user_id')->nullable()->constrained('users')->nullOnDelete();
+
+            // 'Terjadwal' | 'Menunggu Laporan' | 'Selesai' | 'Dibatalkan'
+            $table->string('status')->default('Terjadwal');
+            $table->text('report')->nullable();
             $table->text('notes')->nullable();
 
             $table->timestamps();

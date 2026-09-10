@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\FacilityController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\ItemController;
 use App\Http\Controllers\Api\RoleController;
+use App\Http\Controllers\Api\SurveyController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\VillaController;
 use Illuminate\Support\Facades\Route;
@@ -81,6 +82,15 @@ Route::middleware(['auth:sanctum', 'tenant', 'rbac'])->group(function () {
     Route::get('/bookings/availability', [BookingController::class, 'availability'])->name('bookings:availability');
     Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('bookings:show');
     Route::patch('/bookings/{booking}/status', [BookingController::class, 'updateStatus'])->name('bookings:update-status');
+
+    /*
+    | Survey lokasi (B4, Fase 5). Survey dari jalur customer (A5) ikut tampil
+    | di sini. TIDAK ada `surveys:show` — permission-nya memang tidak ada di
+    | seeder, dan modal detail memakai data baris yang sudah dimuat tabel.
+    */
+    Route::get('/surveys', [SurveyController::class, 'index'])->name('surveys:index');
+    Route::post('/surveys', [SurveyController::class, 'store'])->name('surveys:store');
+    Route::match(['put', 'patch'], '/surveys/{survey}', [SurveyController::class, 'update'])->name('surveys:update');
 
     /*
     | Master Data (B4, Fase 2) — prefix /admin sesuai dok 03.
