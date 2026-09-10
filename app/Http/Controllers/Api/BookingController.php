@@ -8,18 +8,14 @@ use App\Http\Requests\Booking\CheckAvailabilityRequest;
 use App\Http\Requests\Booking\StoreBookingRequest;
 use App\Http\Requests\Booking\UpdateBookingStatusRequest;
 use App\Http\Resources\BookingResource;
-use App\Models\Addon;
 use App\Models\Booking;
-use App\Models\Guest;
 use App\Models\Item;
-use App\Models\Survey;
+use App\Support\AddonPolicy;
 use App\Support\BookingAvailability;
-use App\Support\BookingCode;
-use App\Support\BookingPricing;
+use App\Support\BookingCreator;
 use App\Support\SurveySlots;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
 
 /**
@@ -218,66 +214,14 @@ class BookingController extends Controller
             return $error;
         }
 
-        $booking = DB::transaction(function () use ($request, $item, $checkIn, $checkOut) {
-            $stay = BookingPricing::forStay($item, $checkIn, $checkOut);
-
-            $addonLines = $request->input('addons', []);
-            $addons = Addon::whereIn('id', array_column($addonLines, 'addon_id'))->get()->keyBy('id');
-            $addonPricing = BookingPricing::forAddons($addonLines, $addons);
-
-            $guest = $this->resolveGuest($request);
-
-            $booking = Booking::create([
-                'item_id' => $item->id,
-                'guest_id' => $guest->id,
-                'kode_booking' => BookingCode::generate(app('currentTenantId')),
-                'check_in' => $checkIn,
-                'check_out' => $checkOut,
-                'nights' => $stay['nights'],
-                'pax' => $request->integer('pax'),
-                'vehicle_count' => $request->input('vehicle_count'),
-                // Snapshot harga & kebijakan pembayaran item saat ini.
-                'price_weekday' => $item->price_weekday,
-                'price_weekend' => $item->price_weekend,
-                'subtotal_item' => $stay['subtotal'],
-                'subtotal_addons' => $addonPricing['subtotal'],
-                'total' => $stay['subtotal'] + $addonPricing['subtotal'],
-                'payment_mode' => $item->payment_mode,
-                'dp_minimum' => $item->dp_minimum,
-                'status' => Booking::STATUS_MENUNGGU,
-                'source' => 'admin',
-                'notes' => $request->input('notes'),
-            ]);
-
-            if ($request->filled('survey')) {
-                $session = $request->input('survey.session');
-
-                Survey::create([
-                    // Villa diturunkan dari item — layar B4 menampilkan kolom
-                    // villa, dan jalur customer selalu tahu kamarnya.
-                    'category_id' => $item->category_id,
-                    'item_id' => $item->id,
-                    'booking_id' => $booking->id,
-                    'guest_id' => $guest->id,
-                    'guest_name' => $guest->name,
-                    'planned_check_in' => $checkIn,
-                    'scheduled_date' => $request->input('survey.date'),
-                    // Jam disimpan juga, bukan hanya kode sesi: papan admin
-                    // menampilkan "13 Agu 2026, 10:00" untuk semua survey,
-                    // dari jalur mana pun asalnya.
-                    'scheduled_time' => SurveySlots::startTimeOf($session),
-                    'session' => $session,
-                    'status' => Survey::STATUS_TERJADWAL,
-                    'notes' => $request->input('survey.notes'),
-                ]);
-            }
-
-            foreach ($addonPricing['lines'] as $line) {
-                $booking->addons()->create($line);
-            }
-
-            return $booking;
-        });
+        // Isi booking dibuat BookingCreator, sama persis dengan yang dipakai
+        // jalur customer — yang membedakan hanya validasi di atas dan
+        // `source`, bukan bentuk booking-nya.
+        $booking = BookingCreator::create(
+            $item,
+            $request->safe()->all(),
+            'admin',
+        );
 
         return $this->created(
             new BookingResource($booking->load(['item.category', 'guest', 'addons.addon'])),
@@ -405,27 +349,12 @@ class BookingController extends Controller
      */
     private function validateAddons(Item $item, array $lines): ?JsonResponse
     {
-        if ($lines === []) {
-            return null;
-        }
-
-        $requested = array_unique(array_column($lines, 'addon_id'));
-
-        $allowed = Addon::whereIn('id', $requested)
-            ->where('status', 'Aktif')
-            ->where(fn ($query) => $query
-                ->whereHas('items', fn ($q) => $q->whereKey($item->id))
-                ->orWhereHas('categories', fn ($q) => $q->whereKey($item->category_id)))
-            ->pluck('id')
-            ->all();
-
-        $rejected = array_diff($requested, $allowed);
+        $rejected = AddonPolicy::rejectedFor($item, $lines);
 
         if ($rejected !== []) {
-            $names = Addon::whereIn('id', $rejected)->pluck('name')->implode(', ');
-
             return $this->error(
-                "Add-on berikut tidak bisa dipesan untuk item ini (nonaktif atau tidak tertaut): {$names}.",
+                'Add-on berikut tidak bisa dipesan untuk item ini (nonaktif atau tidak tertaut): '
+                    .AddonPolicy::namesOf($rejected).'.',
                 422,
             );
         }
@@ -433,11 +362,6 @@ class BookingController extends Controller
         return null;
     }
 
-    /**
-     * Cari tamu berdasar nomor WhatsApp dalam tenant ini, atau buat baru.
-     * Nomor jadi kunci alami supaya tamu berulang tidak terpecah jadi banyak
-     * baris di CRM (Fase 7).
-     */
     /**
      * Slot survey yang dipilih di layar A5 diperiksa ULANG di sini.
      *
@@ -466,38 +390,5 @@ class BookingController extends Controller
         }
 
         return null;
-    }
-
-    private function resolveGuest(StoreBookingRequest $request): Guest
-    {
-        $phone = $request->input('guest_phone');
-
-        if ($phone) {
-            $existing = Guest::where('phone', $phone)->first();
-
-            if ($existing) {
-                // Lengkapi data yang sebelumnya kosong, jangan menimpa yang ada.
-                // Tamu yang kembali memesan tidak boleh kehilangan profil lamanya
-                // hanya karena form kali ini dibiarkan kosong.
-                $existing->fill(array_filter([
-                    'name' => $existing->name ?: $request->input('guest_name'),
-                    'email' => $existing->email ?: $request->input('guest_email'),
-                    'birth_date' => $existing->birth_date ?: $request->input('guest_birth_date'),
-                    'origin' => $existing->origin ?: $request->input('guest_origin'),
-                    'guest_type' => $existing->guest_type ?: $request->input('guest_type'),
-                ]))->save();
-
-                return $existing;
-            }
-        }
-
-        return Guest::create([
-            'name' => $request->input('guest_name'),
-            'phone' => $phone,
-            'email' => $request->input('guest_email'),
-            'birth_date' => $request->input('guest_birth_date'),
-            'origin' => $request->input('guest_origin'),
-            'guest_type' => $request->input('guest_type'),
-        ]);
     }
 }

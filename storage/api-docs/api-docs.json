@@ -1802,13 +1802,112 @@
                 ]
             }
         },
+        "/api/surveys": {
+            "get": {
+                "tags": [
+                    "Survey"
+                ],
+                "summary": "Daftar survey (B4)",
+                "description": "Daftar survey terpaginasi untuk papan Manajemen Survey.\n\n`pic_options` ikut dikembalikan: dropdown \"PIC Room Tour\" butuh daftar\nuser internal, sementara role Admin sengaja TIDAK punya `users:index`\n(manajemen user hanya untuk Superadmin Klien). Menyertakannya di sini\nmembuat layar cukup berbekal `surveys:index`.",
+                "operationId": "ac58497c90e6afa386329466fa1f5db2",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "description": "Terjadwal | Menunggu Laporan | Selesai | Dibatalkan",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "description": "Cari nama tamu.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Daftar survey"
+                    },
+                    "403": {
+                        "description": "Tidak punya permission surveys:index",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Survey"
+                ],
+                "summary": "Jadwalkan survey (B4)",
+                "description": "Menjadwalkan survey dari sisi admin, untuk calon tamu yang menghubungi\nlangsung. Booking dan item boleh kosong.\n\nAturan H-7 hanya ditegakkan bila `planned_check_in` diisi — tanpa\ntanggal rencana menginap, tidak ada yang bisa dihitung mundur.\n\nSesi diturunkan dari jam yang diisi: 09:30 masuk sesi Pagi, sehingga\njadwal ini ikut memakan kuota slot yang ditawarkan ke customer. Jam di\nluar jam operasional tidak menutup slot mana pun.",
+                "operationId": "ce9e02ee61de80a47635caad8e5bd1fe",
+                "responses": {
+                    "201": {
+                        "description": "Survey dijadwalkan"
+                    },
+                    "422": {
+                        "description": "Validasi gagal / melewati batas H-7",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/surveys/{survey}": {
+            "patch": {
+                "tags": [
+                    "Survey"
+                ],
+                "summary": "Ubah survey / tulis laporan (B4)",
+                "description": "Dipakai dua hal: menulis laporan hasil survey, dan memindahkan jadwal\natau mengganti PIC.\n\nMengisi `report` tanpa menyebut `status` otomatis menandai survey\n`Selesai` — di layar, menulis laporan memang berarti kunjungannya sudah\nterjadi, dan meminta admin mengubah status secara terpisah hanya\nmenyisakan baris yang laporannya ada tapi statusnya masih menggantung.",
+                "operationId": "b287380f76317a4b07105d088af5422a",
+                "responses": {
+                    "200": {
+                        "description": "Survey diperbarui"
+                    },
+                    "422": {
+                        "description": "Validasi gagal",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/villas": {
             "get": {
                 "tags": [
                     "Katalog Publik"
                 ],
                 "summary": "Daftar villa (A2)",
-                "description": "Katalog villa untuk halaman listing. Tidak butuh autentikasi.\r\n\r\nKategori nonaktif ATAU yang belum punya item aktif tetap dikembalikan,\r\nditandai `coming_soon: true` dengan `price_from: null` — frontend\r\nmenampilkannya diredupkan dengan label \"Segera hadir\" (lihat kartu\r\nWisata Camping). Menyaringnya di server akan menghilangkan kartu itu.\r\n\r\n`price_from` dan `capacity` dihitung dari item aktif, bukan kolom\r\ntersimpan di kategori.\r\n\r\nFilter `cap_*` dan `check_in` digabung pada item yang SAMA: villa lolos\r\nbila punya satu item aktif yang muat rombongan itu sekaligus bebas pada\r\ntanggal itu. Perlu diketahui, memakai filter apa pun akan menyingkirkan\r\nkartu `coming_soon` — kategori tanpa item aktif tidak bisa memenuhi\r\nsyarat mana pun.",
+                "description": "Katalog villa untuk halaman listing. Tidak butuh autentikasi.\n\nKategori nonaktif ATAU yang belum punya item aktif tetap dikembalikan,\nditandai `coming_soon: true` dengan `price_from: null` — frontend\nmenampilkannya diredupkan dengan label \"Segera hadir\" (lihat kartu\nWisata Camping). Menyaringnya di server akan menghilangkan kartu itu.\n\n`price_from` dan `capacity` dihitung dari item aktif, bukan kolom\ntersimpan di kategori.\n\nFilter `cap_*` dan `check_in` digabung pada item yang SAMA: villa lolos\nbila punya satu item aktif yang muat rombongan itu sekaligus bebas pada\ntanggal itu. Perlu diketahui, memakai filter apa pun akan menyingkirkan\nkartu `coming_soon` — kategori tanpa item aktif tidak bisa memenuhi\nsyarat mana pun.",
                 "operationId": "1be66933b76af35ba506c7510f579df9",
                 "parameters": [
                     {
@@ -1954,7 +2053,7 @@
                     "Katalog Publik"
                 ],
                 "summary": "Tanggal terisi per item (A4)",
-                "description": "Malam yang sudah terisi untuk tiap item aktif sebuah villa, dipakai\r\nkalender pilih tanggal. Tanpa autentikasi - pengunjung anonim juga\r\nmemesan lewat layar ini.\r\n\r\nYang dikembalikan adalah MALAM MENGINAP, bukan rentang booking: booking\r\n14-16 mengisi malam 14 dan 15, sedangkan 16 tetap bisa dipesan sebagai\r\ncheck-in. Frontend cukup menandai tanggal di daftar ini sebagai tidak\r\ntersedia, tanpa menghitung ulang aturan bentrok.\r\n\r\n`fully_booked_nights` adalah irisan seluruh item: malam ketika villa\r\ntidak punya satu pun kamar tersisa.",
+                "description": "Malam yang sudah terisi untuk tiap item aktif sebuah villa, dipakai\nkalender pilih tanggal. Tanpa autentikasi - pengunjung anonim juga\nmemesan lewat layar ini.\n\nYang dikembalikan adalah MALAM MENGINAP, bukan rentang booking: booking\n14-16 mengisi malam 14 dan 15, sedangkan 16 tetap bisa dipesan sebagai\ncheck-in. Frontend cukup menandai tanggal di daftar ini sebagai tidak\ntersedia, tanpa menghitung ulang aturan bentrok.\n\n`fully_booked_nights` adalah irisan seluruh item: malam ketika villa\ntidak punya satu pun kamar tersisa.",
                 "operationId": "7d26a1428839da61c7bc21c47051f02e",
                 "parameters": [
                     {
@@ -2007,7 +2106,7 @@
                     "Katalog Publik"
                 ],
                 "summary": "Rincian harga satu rencana menginap (A4)",
-                "description": "Menghitung malam weekday/weekend dan subtotal untuk satu item pada\r\nrentang tanggal tertentu, memakai `BookingPricing` yang sama dengan\r\nyang dipakai saat booking dibuat.\r\n\r\nAda supaya frontend tidak menyalin aturan tarif. Definisi malam weekend\r\n(Sabtu & Minggu) hanya hidup di satu tempat, dan angka yang dilihat\r\npengunjung dijamin sama dengan yang akan ditagihkan.",
+                "description": "Menghitung malam weekday/weekend dan subtotal untuk satu item pada\nrentang tanggal tertentu, memakai `BookingPricing` yang sama dengan\nyang dipakai saat booking dibuat.\n\nAda supaya frontend tidak menyalin aturan tarif. Definisi malam weekend\n(Sabtu & Minggu) hanya hidup di satu tempat, dan angka yang dilihat\npengunjung dijamin sama dengan yang akan ditagihkan.",
                 "operationId": "21389c1460a3160b44b347d4741b3798",
                 "parameters": [
                     {
@@ -2068,7 +2167,7 @@
                     "Katalog Publik"
                 ],
                 "summary": "Slot survey lokasi yang tersedia (A5)",
-                "description": "Jadwal survey yang masih bisa dipilih untuk sebuah rencana check-in.\r\n\r\nSlot tidak disimpan sebagai baris di database: sesi (Pagi/Siang) dan\r\naturan tanggalnya ada di config/survey.php, dan yang ditabelkan hanya\r\nslot yang sudah dipesan. Batasnya H-7 sebelum check-in dan paling cepat\r\nH+2 dari hari ini.\r\n\r\n`deadline` selalu dikembalikan supaya layar bisa menjelaskan MENGAPA\r\ndaftarnya kosong ketika check-in sudah terlalu dekat.",
+                "description": "Jadwal survey yang masih bisa dipilih untuk sebuah rencana check-in.\n\nSlot tidak disimpan sebagai baris di database: sesi (Pagi/Siang) dan\naturan tanggalnya ada di config/survey.php, dan yang ditabelkan hanya\nslot yang sudah dipesan. Batasnya H-7 sebelum check-in dan paling cepat\nH+2 dari hari ini.\n\n`deadline` selalu dikembalikan supaya layar bisa menjelaskan MENGAPA\ndaftarnya kosong ketika check-in sudah terlalu dekat.",
                 "operationId": "8fe5e01197a7046701945f148c9daa60",
                 "parameters": [
                     {
@@ -3194,6 +3293,10 @@
         {
             "name": "Booking",
             "description": "Pemesanan kamar/paket: daftar, booking manual admin, cek ketersediaan, ubah status (Fase 3)"
+        },
+        {
+            "name": "Survey",
+            "description": "Survey"
         }
     ]
 }

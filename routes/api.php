@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\FacilityController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\ItemController;
+use App\Http\Controllers\Api\PublicBookingController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\SurveyController;
 use App\Http\Controllers\Api\UserController;
@@ -55,6 +56,16 @@ Route::middleware('tenant.public')->group(function () {
     Route::get('/villas/{slug}/availability', [VillaController::class, 'availability']);
     Route::get('/villas/{slug}/quote', [VillaController::class, 'quote']);
     Route::get('/villas/{slug}/survey-slots', [VillaController::class, 'surveySlots']);
+
+    /*
+    | Booking oleh pengunjung (A6-A10). Publik dengan alasan yang sama seperti
+    | katalog: alur pemesanan menyediakan "lanjutkan tanpa akun".
+    |
+    | `throttle` dipasang karena endpoint ini menulis dan siapa pun bisa
+    | memanggilnya — tanpa itu, satu skrip bisa memenuhi kalender.
+    */
+    Route::post('/public/bookings', [PublicBookingController::class, 'store'])
+        ->middleware('throttle:10,1');
 });
 
 /*
