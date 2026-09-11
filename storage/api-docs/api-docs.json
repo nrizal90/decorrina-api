@@ -1281,6 +1281,31 @@
                 ]
             }
         },
+        "/api/dashboard": {
+            "get": {
+                "tags": [
+                    "Laporan"
+                ],
+                "summary": "KPI, tren booking, dan aktivitas terbaru (B1)",
+                "description": "Kartu `revenue` null bila user tidak punya ledger:index (Staff).",
+                "operationId": "d5fcadff7c52501c317a59bc00886f22",
+                "responses": {
+                    "200": {
+                        "description": "Dashboard"
+                    },
+                    "403": {
+                        "description": "Tidak punya permission reports:view",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/admin/facilities": {
             "get": {
                 "tags": [
@@ -1470,6 +1495,89 @@
                         "bearerAuth": []
                     }
                 ]
+            }
+        },
+        "/api/guests": {
+            "get": {
+                "tags": [
+                    "CRM"
+                ],
+                "summary": "Daftar tamu (B8)",
+                "description": "Daftar tamu terpaginasi beserta jumlah booking dan total pengeluaran.\n\n`origins` ikut dikembalikan — daftar asal daerah yang benar-benar ada di\ndata, untuk mengisi dropdown filter tanpa panggilan kedua.",
+                "operationId": "56cc8fe33a100159d774722901ae37e8",
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "description": "Cari nama, email, atau nomor.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "guest_type",
+                        "in": "query",
+                        "description": "Pribadi | Instansi",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "origin",
+                        "in": "query",
+                        "description": "Asal daerah (cocok persis).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Daftar tamu"
+                    },
+                    "403": {
+                        "description": "Tidak punya permission guests:index",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/guests/{guest}": {
+            "get": {
+                "tags": [
+                    "CRM"
+                ],
+                "summary": "Detail tamu beserta riwayat booking (B8)",
+                "operationId": "0dc46d1e01b2627845000e30d5b0ae0d",
+                "responses": {
+                    "200": {
+                        "description": "Detail tamu"
+                    },
+                    "404": {
+                        "description": "Tamu tidak ditemukan",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/api/health": {
@@ -1800,6 +1908,149 @@
                         "bearerAuth": []
                     }
                 ]
+            }
+        },
+        "/api/ledger": {
+            "get": {
+                "tags": [
+                    "Keuangan"
+                ],
+                "summary": "Buku kas, laporan bulanan, dan bagi hasil (B9)",
+                "description": "- Tanpa parameter khusus: entri buku kas untuk rentang `from`/`to`\n  (default bulan berjalan) beserta total pemasukan/pengeluaran.\n- `month=YYYY-MM`: ringkasan bulan itu + rincian per kategori.\n- `profit_share=<slug villa>`: bagi hasil per bulan untuk villa yang\n  punya skema di config/finance.php (sementara dipatok, menunggu modul\n  joint venture).\n\n`months` (bulan yang punya entri) dan `categories` (saran kategori)\nselalu ikut, untuk dropdown di layar.",
+                "operationId": "5def9712507f8cca1a1a3f2e40c56d1c",
+                "parameters": [
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "description": "Pemasukan | Pengeluaran",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "month",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "example": "2026-09"
+                        }
+                    },
+                    {
+                        "name": "profit_share",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "example": "villa-cendana-wangi"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Buku kas"
+                    },
+                    "403": {
+                        "description": "Tidak punya permission ledger:index",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Keuangan"
+                ],
+                "summary": "Catat transaksi manual (B9)",
+                "operationId": "5d206e6e425991517ade9623c4576d76",
+                "responses": {
+                    "201": {
+                        "description": "Entri dicatat"
+                    },
+                    "422": {
+                        "description": "Validasi gagal",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/reports": {
+            "get": {
+                "tags": [
+                    "Laporan"
+                ],
+                "summary": "Occupancy, CRM analytics, dan breakdown pendapatan (B10)",
+                "description": "Ketiga blok laporan untuk satu rentang tanggal. Tanpa parameter, 30 hari\nterakhir sampai hari ini.\n\nOkupansi dihitung dari booking yang menghalangi kalender (semua status\nkecuali Dibatalkan). Pendapatan hanya dari DP Dibayar / Lunas / Selesai,\ndan sampai modul pembayaran ada angkanya adalah NILAI booking, bukan\nkas yang diterima.",
+                "operationId": "ff83498294a9277f092f65a52c58fbc5",
+                "parameters": [
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "description": "Eksklusif untuk okupansi (malam tanggal ini tidak dihitung).",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Laporan"
+                    },
+                    "403": {
+                        "description": "Tidak punya permission reports:view",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Rentang tidak valid",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/api/surveys": {
@@ -3293,6 +3544,18 @@
         {
             "name": "Booking",
             "description": "Pemesanan kamar/paket: daftar, booking manual admin, cek ketersediaan, ubah status (Fase 3)"
+        },
+        {
+            "name": "Laporan",
+            "description": "Laporan"
+        },
+        {
+            "name": "CRM",
+            "description": "CRM"
+        },
+        {
+            "name": "Keuangan",
+            "description": "Keuangan"
         },
         {
             "name": "Survey",
