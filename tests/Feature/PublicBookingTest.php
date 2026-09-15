@@ -123,6 +123,39 @@ class PublicBookingTest extends TestCase
         $this->assertSame($customer->id, Guest::firstOrFail()->user_id);
     }
 
+    /** Audit T-03: jalur publik tidak boleh membocorkan profil tamu lama, dan tidak boleh membajaknya. */
+    public function test_public_response_does_not_leak_stored_guest_profile(): void
+    {
+        $this->book(['guest_email' => 'rina@example.com', 'guest_birth_date' => '1995-04-17', 'guest_origin' => 'Bandung'])
+            ->assertCreated();
+
+        // "Penyerang" memesan lagi dengan nomor yang sama, tanpa profil.
+        $later = Carbon::today()->addDays(40);
+        $this->book(['check_in' => $later->toDateString(), 'check_out' => $later->copy()->addDay()->toDateString()])
+            ->assertCreated()
+            ->assertJsonPath('data.guest.name', 'Rina Pratiwi')
+            ->assertJsonMissingPath('data.guest.email')
+            ->assertJsonMissingPath('data.guest.birth_date')
+            ->assertJsonMissingPath('data.guest.origin')
+            ->assertJsonMissingPath('data.allowed_transitions');
+    }
+
+    public function test_existing_guest_is_not_linked_to_the_logged_in_account(): void
+    {
+        $this->book()->assertCreated(); // tamu anonim lebih dulu
+
+        $attacker = User::factory()->create(['tenant_id' => null]);
+        $attacker->assignRole('customer');
+        Sanctum::actingAs($attacker);
+
+        $later = Carbon::today()->addDays(40);
+        $this->book(['check_in' => $later->toDateString(), 'check_out' => $later->copy()->addDay()->toDateString()])
+            ->assertCreated();
+
+        $this->assertNull(Guest::firstOrFail()->user_id);
+        $this->assertSame(1, Guest::count());
+    }
+
     public function test_guest_profile_and_vehicle_count_are_saved(): void
     {
         $this->book([

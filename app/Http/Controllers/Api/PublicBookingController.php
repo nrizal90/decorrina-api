@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Concerns\ApiResponses;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Booking\PublicStoreBookingRequest;
-use App\Http\Resources\BookingResource;
+use App\Http\Resources\PublicBookingResource;
 use App\Models\Booking;
 use App\Models\Item;
 use App\Support\AddonPolicy;
@@ -82,7 +82,7 @@ class PublicBookingController extends Controller
         );
 
         return $this->created(
-            new BookingResource($booking->load(['item.category', 'guest', 'addons.addon'])),
+            new PublicBookingResource($booking->load(['item.category', 'guest', 'addons.addon'])),
             'Booking berhasil dibuat. Selesaikan pembayaran untuk mengonfirmasinya.',
         );
     }
@@ -125,7 +125,7 @@ class PublicBookingController extends Controller
             return $this->error('Kode booking atau kontak tidak cocok. Pastikan data yang dimasukkan benar.', 404);
         }
 
-        return $this->ok(new BookingResource($booking));
+        return $this->ok(new PublicBookingResource($booking));
     }
 
     /**

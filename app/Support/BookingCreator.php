@@ -123,9 +123,11 @@ class BookingCreator
                     'birth_date' => $existing->birth_date ?: ($profile['birth_date'] ?? null),
                     'origin' => $existing->origin ?: ($profile['origin'] ?? null),
                     'guest_type' => $existing->guest_type ?: ($profile['guest_type'] ?? null),
-                    // Tamu yang tadinya anonim lalu memesan sambil login:
-                    // akunnya ditautkan, tapi tautan lama tidak dipindah.
-                    'user_id' => $existing->user_id ?: $user?->id,
+                    // SENGAJA tanpa `user_id`: tamu lama TIDAK ditautkan ke akun
+                    // yang sedang login. Jalur publik hanya tahu nomor telepon,
+                    // jadi siapa pun bisa mengklaim tamu orang lain sebagai
+                    // "akunnya" (audit T-03b). Tautan ke tamu lama baru boleh
+                    // dibuat lewat verifikasi (OTP WhatsApp) nanti.
                 ]))->save();
 
                 return $existing;
