@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Villa;
 
+use App\Rules\StayWithinLimits;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Carbon;
 
@@ -29,7 +30,7 @@ class IndexVillaRequest extends FormRequest
             // Katalog hanya menanyakan "malam ini kosong tidak?", jadi
             // check_out boleh tidak dikirim — lihat checkOut() di bawah.
             'check_in' => ['nullable', 'date_format:Y-m-d'],
-            'check_out' => ['nullable', 'date_format:Y-m-d', 'after:check_in'],
+            'check_out' => ['nullable', 'date_format:Y-m-d', 'after:check_in', new StayWithinLimits],
         ];
     }
 

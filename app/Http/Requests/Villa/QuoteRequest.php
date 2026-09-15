@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Villa;
 
+use App\Rules\StayWithinLimits;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -25,7 +26,7 @@ class QuoteRequest extends FormRequest
             // lebih jelas di sana ketimbang sebagai kegagalan aturan `exists`.
             'item_id' => ['required', 'integer'],
             'check_in' => ['required', 'date_format:Y-m-d'],
-            'check_out' => ['required', 'date_format:Y-m-d', 'after:check_in'],
+            'check_out' => ['required', 'date_format:Y-m-d', 'after:check_in', new StayWithinLimits],
         ];
     }
 }

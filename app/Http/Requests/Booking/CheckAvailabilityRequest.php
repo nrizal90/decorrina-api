@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Booking;
 
+use App\Rules\StayWithinLimits;
 use App\Rules\ExistsInTenant;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -18,7 +19,7 @@ class CheckAvailabilityRequest extends FormRequest
         return [
             'item_id' => ['required', 'integer', new ExistsInTenant('items')],
             'check_in' => ['required', 'date_format:Y-m-d'],
-            'check_out' => ['required', 'date_format:Y-m-d', 'after:check_in'],
+            'check_out' => ['required', 'date_format:Y-m-d', 'after:check_in', new StayWithinLimits],
         ];
     }
 }

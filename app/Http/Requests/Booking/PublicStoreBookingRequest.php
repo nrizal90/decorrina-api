@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Booking;
 
+use App\Rules\StayWithinLimits;
 use App\Models\Guest;
 use App\Rules\ExistsInTenant;
 use Illuminate\Foundation\Http\FormRequest;
@@ -40,7 +41,7 @@ class PublicStoreBookingRequest extends FormRequest
             'guest_type' => ['nullable', Rule::in(Guest::TYPES)],
 
             'check_in' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
-            'check_out' => ['required', 'date_format:Y-m-d', 'after:check_in'],
+            'check_out' => ['required', 'date_format:Y-m-d', 'after:check_in', new StayWithinLimits],
 
             'pax' => ['required', 'integer', 'min:1'],
             'vehicle_count' => ['nullable', 'integer', 'min:0', 'max:99'],

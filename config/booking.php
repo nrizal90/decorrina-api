@@ -17,4 +17,14 @@ return [
 
     'sequence_padding' => 5,
 
+    /*
+    |--------------------------------------------------------------------------
+    | Batas Menginap (audit T-04)
+    |--------------------------------------------------------------------------
+    */
+
+    'max_nights' => (int) env('BOOKING_MAX_NIGHTS', 30),
+
+    'max_months_ahead' => (int) env('BOOKING_MAX_MONTHS_AHEAD', 12),
+
 ];

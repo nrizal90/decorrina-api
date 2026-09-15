@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Booking;
 
+use App\Rules\StayWithinLimits;
 use App\Models\Guest;
 use App\Rules\ExistsInTenant;
 use Illuminate\Foundation\Http\FormRequest;
@@ -44,7 +45,7 @@ class StoreBookingRequest extends FormRequest
             'check_in' => ['required', 'date_format:Y-m-d'],
             // after: menginap minimal satu malam — check-out tak boleh sama
             // dengan check-in.
-            'check_out' => ['required', 'date_format:Y-m-d', 'after:check_in'],
+            'check_out' => ['required', 'date_format:Y-m-d', 'after:check_in', new StayWithinLimits],
 
             'pax' => ['required', 'integer', 'min:1'],
             // Milik satu kali menginap, bukan milik tamunya: rombongan yang

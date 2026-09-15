@@ -147,6 +147,24 @@ class PublicBookingTest extends TestCase
      * menginap — itu pekerjaan admin, bukan sesuatu yang masuk akal dilakukan
      * pengunjung. Test kembar di BookingTest menjaga sisi sebaliknya.
      */
+    /** Audit T-04: rentang tak berbatas = CPU DoS + kalender terblokir 8000 tahun. */
+    public function test_stay_length_and_horizon_are_capped(): void
+    {
+        $in = Carbon::today()->addDays(20);
+        $this->book(['check_out' => $in->copy()->addDays(31)->toDateString()])
+            ->assertUnprocessable()->assertJsonValidationErrors('check_out');
+        $this->book(['check_out' => $in->copy()->addDays(30)->toDateString()])
+            ->assertCreated();
+
+        $far = Carbon::today()->addMonths(13);
+        $this->book(['check_in' => $far->toDateString(), 'check_out' => $far->copy()->addDay()->toDateString()])
+            ->assertUnprocessable()->assertJsonValidationErrors('check_out');
+
+        $this->withHeader('X-Tenant', 'decorinna')
+            ->getJson("/api/villas/villa-de-corrinna/quote?item_id={$this->item()->id}&check_in=2026-10-01&check_out=9999-12-31")
+            ->assertUnprocessable();
+    }
+
     public function test_visitor_cannot_book_a_past_date(): void
     {
         $this->book([
