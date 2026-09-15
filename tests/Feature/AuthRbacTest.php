@@ -188,16 +188,27 @@ class AuthRbacTest extends TestCase
 
     public function test_role_sync_escalation_is_forbidden(): void
     {
+        // Audit T-02: role global, jadi klien tak boleh menyunting SAMA SEKALI
+        // (sebelumnya hanya system-config:manage & role vendor yang ditolak).
+        $azatech = $this->azatech(); // ambil sebelum tenant scope terikat oleh request klien
         Sanctum::actingAs($this->klien());
 
-        // Klien tak boleh menyematkan system-config:manage ke role manapun.
         $this->putJson('/api/roles/staff/permissions', [
-            'permissions' => ['reports:view', 'system-config:manage'],
-        ])->assertForbidden();
-
-        // Role vendor immutable.
-        $this->putJson('/api/roles/superadmin-azatech/permissions', [
             'permissions' => ['reports:view'],
         ])->assertForbidden();
+        $this->putJson('/api/roles/customer/permissions', [
+            'permissions' => ['users:index'],
+        ])->assertForbidden();
+        $this->getJson('/api/roles')->assertOk(); // melihat matriks tetap boleh
+
+        Sanctum::actingAs($azatech);
+
+        // Role vendor immutable bahkan untuk azatech sendiri.
+        $this->withHeader('X-Tenant', 'decorinna')->putJson('/api/roles/superadmin-azatech/permissions', [
+            'permissions' => ['reports:view'],
+        ])->assertForbidden();
+        $this->withHeader('X-Tenant', 'decorinna')->putJson('/api/roles/staff/permissions', [
+            'permissions' => ['reports:view'],
+        ])->assertOk();
     }
 }

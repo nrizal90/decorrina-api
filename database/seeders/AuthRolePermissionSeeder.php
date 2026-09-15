@@ -42,8 +42,12 @@ class AuthRolePermissionSeeder extends Seeder
         $admin = array_values(array_diff($allPermissions, $userRoleAdmin, $systemConfig));
         // Staff = Admin minus Keuangan (ledger) & Settings.
         $staff = array_values(array_diff($admin, $this->byPrefix($admin, ['ledger:', 'settings:'])));
-        // Superadmin Klien = semua KECUALI config sistem (termasuk kelola user/role).
-        $superadminKlien = array_values(array_diff($allPermissions, $systemConfig));
+        // Superadmin Klien = semua KECUALI config sistem & roles:sync.
+        // Role masih GLOBAL (belum per tenant): klien tenant A yang mengubah
+        // permission role `customer`/`admin` ikut mengubah tenant B — dan role
+        // `customer` tanpa tenant scope bisa dijadikan pintu lintas tenant
+        // (audit 2026-09-11 T-02). Kembalikan saat Spatie teams aktif.
+        $superadminKlien = array_values(array_diff($allPermissions, $systemConfig, ['roles:sync']));
         // Superadmin Azatech = semua (punya Gate bypass, ini untuk kelengkapan FE).
         $superadminAzatech = $allPermissions;
         // Stakeholder = read-only (index/show + reports:view).
