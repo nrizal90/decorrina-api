@@ -13,6 +13,7 @@ use Database\Seeders\AuthRolePermissionSeeder;
 use Database\Seeders\MasterDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -241,6 +242,26 @@ class PublicBookingTest extends TestCase
         $wrongCode = $this->lookup('DCG-2026-99999', '081234567890')->assertStatus(404);
 
         $this->assertSame($wrongContact->json('message'), $wrongCode->json('message'));
+    }
+
+    /** T-01: kontak yang ternormalisasi jadi '' tidak boleh cocok dengan email/telepon kosong. */
+    public function test_lookup_rejects_empty_normalized_contact(): void
+    {
+        $code = $this->book(['guest_phone' => '081234567890'])->json('data.kode_booking');
+
+        // Maks 5 lookup: endpoint ber-throttle 6/menit.
+        foreach (['x', '-', 'abc', '+'] as $junk) {
+            $this->lookup($code, $junk)->assertStatus(404);
+        }
+        $this->lookup($code, '081234567890')->assertOk();
+    }
+
+    public function test_lookup_rejects_contactless_booking(): void
+    {
+        $code = $this->book()->json('data.kode_booking');
+        DB::table('guests')->update(['phone' => null, 'email' => null]);
+
+        $this->lookup($code, 'x')->assertStatus(404);
     }
 
     public function test_lookup_requires_both_fields(): void

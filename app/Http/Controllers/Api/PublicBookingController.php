@@ -111,10 +111,15 @@ class PublicBookingController extends Controller
             ->where('kode_booking', $code)
             ->first();
 
-        $matches = $booking !== null && $booking->guest !== null && (
-            self::normalizeContact((string) $booking->guest->phone) === $contact
-            || self::normalizeContact((string) $booking->guest->email) === $contact
-        );
+        // Kontak tersimpan yang KOSONG dibuang dulu. Tanpa ini, tamu tanpa email
+        // (mayoritas booking publik) cocok dengan kontak sampah apa pun:
+        // normalizeContact('x') dan normalizeContact('') sama-sama ''.
+        $known = array_filter([
+            self::normalizeContact((string) $booking?->guest?->phone),
+            self::normalizeContact((string) $booking?->guest?->email),
+        ], fn (string $v) => $v !== '');
+
+        $matches = $contact !== '' && in_array($contact, $known, true);
 
         if (! $matches) {
             return $this->error('Kode booking atau kontak tidak cocok. Pastikan data yang dimasukkan benar.', 404);
