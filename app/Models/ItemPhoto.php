@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
 
 /**
- * Foto item. Tabelnya sudah ada agar ItemResource bisa mengembalikan `photos`
- * sejak sekarang; endpoint upload-nya belum dikerjakan (lihat roadmap Fase 2).
+ * Foto item. Diunggah lewat ItemPhotoController (B4).
  *
  * Tidak memakai BelongsToTenant — isolasi diturunkan dari `items`.
  */
@@ -26,6 +27,12 @@ class ItemPhoto extends Model
             'sort_order' => 'integer',
             'is_cover' => 'boolean',
         ];
+    }
+
+    /** URL publik dari disk `booking.photos_disk` — lokal sekarang, S3 nanti. */
+    protected function url(): Attribute
+    {
+        return Attribute::get(fn () => Storage::disk(config('booking.photos_disk'))->url($this->path));
     }
 
     public function item(): BelongsTo

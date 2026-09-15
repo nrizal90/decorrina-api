@@ -37,7 +37,7 @@ class VillaDetailResource extends JsonResource
             'facilities' => FacilityResource::collection($this->whenLoaded('facilities')),
             'items' => ItemResource::collection($this->whenLoaded('activeItems')),
             'addons' => AddonResource::collection($this->whenLoaded('addons')),
-            'photos' => [], // menyusul bersama endpoint upload foto
+            'photos' => $this->whenLoaded('activeItems', fn () => VillaResource::villaPhotos($this->activeItems)->pluck('url')),
         ];
     }
 }

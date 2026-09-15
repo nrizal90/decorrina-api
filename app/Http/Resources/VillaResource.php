@@ -37,7 +37,19 @@ class VillaResource extends JsonResource
                 'min' => $this->cap_min === null ? null : (int) $this->cap_min,
                 'max' => $this->cap_max === null ? null : (int) $this->cap_max,
             ],
-            'photo' => null, // menyusul bersama endpoint upload foto
+            // Kartu katalog: cover item aktif pertama yang punya foto.
+            'photo' => $this->whenLoaded('activeItems', fn () => self::villaPhotos($this->activeItems)->first()?->url),
         ];
+    }
+
+    /**
+     * Foto villa = gabungan foto item aktifnya, cover tiap item didahulukan.
+     * Item termurah (urutan `activeItems`) tampil lebih dulu.
+     *
+     * @return \Illuminate\Support\Collection<int, \App\Models\ItemPhoto>
+     */
+    public static function villaPhotos($items)
+    {
+        return $items->flatMap(fn ($item) => $item->photos->sortBy([['is_cover', 'desc'], ['sort_order', 'asc']]))->values();
     }
 }

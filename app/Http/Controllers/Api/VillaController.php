@@ -102,6 +102,7 @@ class VillaController extends Controller
                             ->overlapping($request->string('check_in')->toString(), $request->checkOut()),
                     ));
             }))
+            ->with(['activeItems' => fn ($q) => $q->orderBy('price_weekday'), 'activeItems.photos'])
             ->orderByRaw("CASE WHEN status = 'Aktif' THEN 0 ELSE 1 END")
             ->orderBy('name')
             ->get();
@@ -129,6 +130,7 @@ class VillaController extends Controller
             ->with([
                 'facilities' => fn ($q) => $q->where('status', 'Aktif')->orderBy('name'),
                 'activeItems' => fn ($q) => $q->orderBy('price_weekday'),
+                'activeItems.photos',
                 'addons' => fn ($q) => $q->where('status', 'Aktif')->orderBy('name'),
             ])
             ->where('slug', $slug)

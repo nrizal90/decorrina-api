@@ -118,6 +118,24 @@ class ItemPhotoTest extends TestCase
         $this->deleteJson("/api/admin/items/{$item->id}/photos/{$other->id}")->assertNotFound();
     }
 
+    public function test_public_catalog_shows_item_photos(): void
+    {
+        $item = $this->item();
+        $a = $this->upload($item)->json('data.id');
+        $b = $this->upload($item, 'b.jpg')->json('data.id');
+        $this->putJson("/api/admin/items/{$item->id}/photos/order", ['photos' => [$a, $b], 'cover_id' => $b])->assertOk();
+        $coverUrl = ItemPhoto::findOrFail($b)->url;
+
+        $slug = $item->category->slug;
+        $listing = $this->withHeader('X-Tenant', 'decorinna')->getJson('/api/villas')->assertOk()->json('data');
+        $this->assertSame($coverUrl, collect($listing)->firstWhere('slug', $slug)['photo']);
+
+        $this->withHeader('X-Tenant', 'decorinna')->getJson("/api/villas/{$slug}")
+            ->assertOk()
+            ->assertJsonPath('data.photos.0', $coverUrl)
+            ->assertJsonCount(2, 'data.photos');
+    }
+
     public function test_role_without_items_update_is_forbidden(): void
     {
         $item = $this->item();

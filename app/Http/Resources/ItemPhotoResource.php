@@ -5,7 +5,6 @@ namespace App\Http\Resources;
 use App\Models\ItemPhoto;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * Foto item. `url` diturunkan dari disk publik agar FE tidak perlu tahu
@@ -19,7 +18,7 @@ class ItemPhotoResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'url' => Storage::disk(config('booking.photos_disk'))->url($this->path),
+            'url' => $this->url,
             'sort_order' => $this->sort_order,
             'is_cover' => $this->is_cover,
         ];
