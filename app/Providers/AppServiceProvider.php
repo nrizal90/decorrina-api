@@ -2,7 +2,10 @@
 
 namespace App\Providers;
 
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -20,6 +23,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Audit T-06: 5 percobaan login/menit per (email, IP).
+        RateLimiter::for('login', fn (Request $request) => Limit::perMinute(5)
+            ->by(strtolower((string) $request->input('email')).'|'.$request->ip()));
+
         // Lapis 1 — Superadmin bypass. Role vendor `superadmin-azatech` lolos
         // SEMUA pengecekan permission. `superadmin-klien` TIDAK dapat bypass
         // (ia diberi hampir semua permission via seeder, kecuali

@@ -36,8 +36,11 @@ Route::get('/health', HealthController::class);
 /*
 | Auth (A11) — publik & non-RBAC.
 */
-Route::post('/auth/register', [AuthController::class, 'register']);
-Route::post('/auth/login', [AuthController::class, 'login']);
+// Throttle (audit T-06): login dikunci per email+IP (RateLimiter 'login' di
+// AppServiceProvider) supaya brute force satu akun tertahan tanpa mengunci
+// seluruh kantor yang berbagi IP; register cukup per IP.
+Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:3,10');
+Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
 
 Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);

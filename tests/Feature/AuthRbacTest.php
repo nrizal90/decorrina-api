@@ -84,6 +84,28 @@ class AuthRbacTest extends TestCase
         ])->assertOk();
     }
 
+    /** Audit T-06: brute force satu akun tertahan setelah 5 percobaan/menit. */
+    public function test_login_is_throttled_per_email(): void
+    {
+        $payload = ['email' => 'admin@decorinna.test', 'password' => 'salah'];
+        for ($i = 0; $i < 5; $i++) {
+            $this->postJson('/api/auth/login', $payload)->assertStatus(401);
+        }
+        $this->postJson('/api/auth/login', $payload)->assertStatus(429);
+
+        // Email lain dari IP yang sama tidak ikut terkunci.
+        $this->postJson('/api/auth/login', ['email' => 'lain@decorinna.test', 'password' => 'salah'])
+            ->assertStatus(401);
+    }
+
+    public function test_register_is_throttled(): void
+    {
+        for ($i = 0; $i < 3; $i++) {
+            $this->postJson('/api/auth/register', [])->assertStatus(422);
+        }
+        $this->postJson('/api/auth/register', [])->assertStatus(429);
+    }
+
     public function test_login_returns_token_and_permissions(): void
     {
         $response = $this->postJson('/api/auth/login', [
