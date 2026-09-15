@@ -527,8 +527,7 @@ class BookingTest extends TestCase
         $customer->assignRole('customer');
         Sanctum::actingAs($customer);
 
-        // bookings:store memang dimiliki customer (alur A6 nanti), tapi tanpa
-        // konteks tenant ia tak bisa menulis lewat jalur admin ini.
-        $this->postJson('/api/bookings', $this->payload())->assertStatus(422);
+        // Audit T-08: harus 403 dari RBAC, bukan 422 "kebetulan" dari ExistsInTenant.
+        $this->postJson('/api/bookings', $this->payload())->assertForbidden();
     }
 }

@@ -64,6 +64,21 @@ class PublicBookingTest extends TestCase
 
     // ------------------------------------------------------------ dasar
 
+    /** Audit T-01b/T-08: customer tanpa tenant TIDAK boleh menyentuh jalur admin. */
+    public function test_customer_cannot_use_admin_booking_endpoints(): void
+    {
+        $this->book()->assertCreated();
+        $booking = Booking::firstOrFail();
+
+        $customer = User::factory()->create(['tenant_id' => null]);
+        $customer->assignRole('customer');
+        Sanctum::actingAs($customer);
+
+        $this->getJson('/api/bookings')->assertForbidden();
+        $this->getJson("/api/bookings/{$booking->id}")->assertForbidden();
+        $this->postJson('/api/bookings', $this->payload())->assertForbidden();
+    }
+
     public function test_visitor_can_book_without_an_account(): void
     {
         $response = $this->book();

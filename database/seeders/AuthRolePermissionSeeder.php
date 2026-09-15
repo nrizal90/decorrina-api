@@ -53,10 +53,11 @@ class AuthRolePermissionSeeder extends Seeder
                 || str_ends_with($p, ':show')
                 || $p === 'reports:view',
         ));
-        // Customer = self-service (data sendiri, difilter ownership di Service).
-        $customer = [
-            'bookings:index', 'bookings:show', 'bookings:store', 'bookings:reschedule',
-        ];
+        // Customer = kosong sampai endpoint self-service (A12) yang menerapkan
+        // ownership ada. Alur A6-A10 memakai /public/bookings tanpa permission.
+        // Memberi bookings:* sekarang = customer membaca semua booking lintas
+        // tenant (audit 2026-09-11 T-01b/T-08).
+        $customer = [];
 
         $rolePermissions = [
             'superadmin-azatech' => $superadminAzatech,
