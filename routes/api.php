@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\FacilityController;
 use App\Http\Controllers\Api\GuestController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\ItemController;
+use App\Http\Controllers\Api\ItemPhotoController;
 use App\Http\Controllers\Api\LedgerController;
 use App\Http\Controllers\Api\PublicBookingController;
 use App\Http\Controllers\Api\ReportController;
@@ -159,6 +160,10 @@ Route::middleware(['auth:sanctum', 'tenant', 'rbac'])->group(function () {
         Route::get('/items/{item}', [ItemController::class, 'show'])->name('items:show');
         Route::match(['put', 'patch'], '/items/{item}', [ItemController::class, 'update'])->name('items:update');
         Route::delete('/items/{item}', [ItemController::class, 'destroy'])->name('items:destroy');
+        // Foto item — beralias ke items:update di DynamicRBACMiddleware.
+        Route::post('/items/{item}/photos', [ItemPhotoController::class, 'store'])->name('items:photos-store');
+        Route::put('/items/{item}/photos/order', [ItemPhotoController::class, 'reorder'])->name('items:photos-reorder');
+        Route::delete('/items/{item}/photos/{photo}', [ItemPhotoController::class, 'destroy'])->name('items:photos-destroy')->scopeBindings();
 
         // Fasilitas
         Route::get('/facilities', [FacilityController::class, 'index'])->name('facilities:index');

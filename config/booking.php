@@ -44,4 +44,22 @@ return [
 
     'max_pending_per_phone' => (int) env('BOOKING_MAX_PENDING_PER_PHONE', 3),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Foto Item
+    |--------------------------------------------------------------------------
+    |
+    | Disk Flysystem tempat foto disimpan. `public` (lokal, butuh
+    | `php artisan storage:link`) sekarang; pindah ke S3 = PHOTOS_DISK=s3 +
+    | `composer require league/flysystem-aws-s3-v3` + kredensial AWS_* di env.
+    | Tidak ada kode yang perlu diubah.
+    |
+    */
+
+    'photos_disk' => env('PHOTOS_DISK', 'public'),
+
+    'photo_max_kb' => (int) env('PHOTO_MAX_KB', 5120),
+
+    'max_photos_per_item' => (int) env('MAX_PHOTOS_PER_ITEM', 10),
+
 ];

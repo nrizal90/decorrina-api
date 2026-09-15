@@ -43,6 +43,10 @@ return [
             'root' => storage_path('app/public'),
             'url' => env('APP_URL').'/storage',
             'visibility' => 'public',
+            // Laravel menyajikan /storage/* sendiri bila symlink `storage:link`
+            // tidak ada (dev di drive exFAT). Di produksi web server + symlink
+            // menyajikan file statis lebih dulu.
+            'serve' => true,
             'throw' => false,
             'report' => false,
         ],

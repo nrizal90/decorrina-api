@@ -35,6 +35,10 @@ class DynamicRBACMiddleware
         // Dashboard dan laporan satu permission ("Lihat laporan & dashboard"),
         // tapi dua route tidak boleh berbagi nama.
         'dashboard:view' => 'reports:view',
+        // Foto adalah bagian dari item: siapa boleh ubah item, boleh urus fotonya.
+        'items:photos-store' => 'items:update',
+        'items:photos-reorder' => 'items:update',
+        'items:photos-destroy' => 'items:update',
     ];
 
     public function handle(Request $request, Closure $next): Response

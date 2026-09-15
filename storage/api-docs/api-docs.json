@@ -1910,6 +1910,157 @@
                 ]
             }
         },
+        "/admin/items/{item}/photos": {
+            "post": {
+                "tags": [
+                    "Master Data — Item"
+                ],
+                "summary": "Upload satu foto item",
+                "operationId": "a06492eccef2b512c9c3b4a53d6aefdb",
+                "parameters": [
+                    {
+                        "name": "item",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "photo"
+                                ],
+                                "properties": {
+                                    "photo": {
+                                        "description": "jpg/png/webp, maks 5 MB",
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Foto tersimpan"
+                    },
+                    "422": {
+                        "description": "File tidak valid atau kuota foto item penuh",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/admin/items/{item}/photos/order": {
+            "put": {
+                "tags": [
+                    "Master Data — Item"
+                ],
+                "summary": "Atur urutan & cover foto item",
+                "operationId": "660e04b7a44f46bfc61063ce67cfc1a2",
+                "parameters": [
+                    {
+                        "name": "item",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "photos"
+                                ],
+                                "properties": {
+                                    "photos": {
+                                        "description": "Seluruh id foto item, urutan baru",
+                                        "type": "array",
+                                        "items": {
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "cover_id": {
+                                        "type": "integer",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Daftar foto setelah diurutkan"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/admin/items/{item}/photos/{photo}": {
+            "delete": {
+                "tags": [
+                    "Master Data — Item"
+                ],
+                "summary": "Hapus foto item",
+                "operationId": "b4d8bca9f248465f63123666a7f21573",
+                "parameters": [
+                    {
+                        "name": "item",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "photo",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Foto dihapus"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
         "/api/ledger": {
             "get": {
                 "tags": [
@@ -3552,6 +3703,10 @@
         {
             "name": "CRM",
             "description": "CRM"
+        },
+        {
+            "name": "Master Data — Item",
+            "description": "Master Data — Item"
         },
         {
             "name": "Keuangan",

@@ -19,7 +19,7 @@ class ItemPhotoResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'url' => Storage::disk('public')->url($this->path),
+            'url' => Storage::disk(config('booking.photos_disk'))->url($this->path),
             'sort_order' => $this->sort_order,
             'is_cover' => $this->is_cover,
         ];
