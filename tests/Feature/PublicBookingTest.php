@@ -198,6 +198,52 @@ class PublicBookingTest extends TestCase
             ->assertUnprocessable();
     }
 
+    /** Audit T-05: satu nomor maksimal N booking menunggu pembayaran. */
+    public function test_pending_bookings_per_phone_are_capped(): void
+    {
+        config(['booking.max_pending_per_phone' => 2]);
+        $day = fn (int $offset) => Carbon::today()->addDays($offset);
+
+        $this->book(['check_in' => $day(20)->toDateString(), 'check_out' => $day(21)->toDateString()])->assertCreated();
+        $this->book(['check_in' => $day(30)->toDateString(), 'check_out' => $day(31)->toDateString()])->assertCreated();
+        $this->book(['check_in' => $day(40)->toDateString(), 'check_out' => $day(41)->toDateString()])
+            ->assertUnprocessable();
+
+        // Nomor lain tidak terpengaruh.
+        $this->book(['guest_phone' => '089999999999', 'check_in' => $day(40)->toDateString(), 'check_out' => $day(41)->toDateString()])
+            ->assertCreated();
+    }
+
+    public function test_unpaid_public_booking_expires_and_releases_the_dates(): void
+    {
+        $this->book()->assertCreated();
+        $booking = Booking::firstOrFail();
+
+        $this->artisan('bookings:expire-pending');
+        $this->assertSame(Booking::STATUS_MENUNGGU, $booking->fresh()->status); // masih segar
+
+        Booking::withoutGlobalScopes()->whereKey($booking->id)
+            ->update(['created_at' => now()->subHours(config('booking.pending_expiry_hours') + 1)]);
+
+        $this->artisan('bookings:expire-pending');
+        $this->assertSame(Booking::STATUS_DIBATALKAN, $booking->fresh()->status);
+
+        // Tanggalnya bisa dipesan lagi.
+        $this->book()->assertCreated();
+    }
+
+    public function test_admin_bookings_never_expire(): void
+    {
+        $this->book()->assertCreated();
+        Booking::withoutGlobalScopes()->update([
+            'source' => 'admin',
+            'created_at' => now()->subDays(30),
+        ]);
+
+        $this->artisan('bookings:expire-pending');
+        $this->assertSame(Booking::STATUS_MENUNGGU, Booking::firstOrFail()->status);
+    }
+
     public function test_visitor_cannot_book_a_past_date(): void
     {
         $this->book([

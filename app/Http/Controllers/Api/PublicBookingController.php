@@ -55,6 +55,17 @@ class PublicBookingController extends Controller
             );
         }
 
+        // Audit T-05: satu nomor tidak boleh menumpuk booking yang belum
+        // dibayar — pembatas termurah terhadap skrip yang memblokir kalender.
+        $maxPending = (int) config('booking.max_pending_per_phone');
+        $pending = Booking::where('status', Booking::STATUS_MENUNGGU)
+            ->where('source', 'customer')
+            ->whereHas('guest', fn ($q) => $q->where('phone', $request->input('guest_phone')))
+            ->count();
+        if ($pending >= $maxPending) {
+            return $this->error("Nomor ini masih punya {$maxPending} booking yang menunggu pembayaran. Selesaikan pembayaran atau hubungi admin.", 422);
+        }
+
         // Tanggal bisa direbut orang lain antara layar pilih tanggal dan
         // penekanan tombol bayar — diperiksa lagi di sini, bukan dipercaya.
         if (! BookingAvailability::isAvailable($item->id, $checkIn, $checkOut)) {
