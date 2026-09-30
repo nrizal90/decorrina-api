@@ -50,6 +50,23 @@ class Booking extends Model
         self::STATUS_DIBATALKAN => [],
     ];
 
+    /** Status benefit (B6) — diturunkan dari `benefit_shown_at`. */
+    public const BENEFIT_BELUM = 'Belum Digunakan';
+
+    public const BENEFIT_SUDAH = 'Sudah Ditunjukkan';
+
+    /** Status yang membuat tamu berhak atas kode akses kawasan. */
+    public const PAID_STATUSES = [self::STATUS_DP, self::STATUS_LUNAS];
+
+    /** Prefix kode akses: Gerbang Gunungsari. */
+    public const ACCESS_CODE_PREFIX = 'GNG-';
+
+    /**
+     * Huruf/angka yang dipakai kode akses. Tanpa 0/O dan 1/I/L: kode dibaca
+     * mata security dari layar HP tamu, bukan dipindai.
+     */
+    private const ACCESS_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+
     /** Status yang TIDAK memblokir tanggal — kamar kembali tersedia. */
     public const RELEASING_STATUSES = [self::STATUS_DIBATALKAN];
 
@@ -58,6 +75,8 @@ class Booking extends Model
         'guest_id',
         'user_id',
         'kode_booking',
+        'kode_akses_kawasan',
+        'benefit_shown_at',
         'check_in',
         'check_out',
         'nights',
@@ -89,6 +108,7 @@ class Booking extends Model
             'subtotal_addons' => 'integer',
             'total' => 'integer',
             'dp_minimum' => 'integer',
+            'benefit_shown_at' => 'datetime',
         ];
     }
 
@@ -130,6 +150,38 @@ class Booking extends Model
         return $query
             ->where('check_in', '<', $checkOut)
             ->where('check_out', '>', $checkIn);
+    }
+
+    public function benefitStatus(): ?string
+    {
+        if ($this->kode_akses_kawasan === null) {
+            return null;
+        }
+
+        return $this->benefit_shown_at === null ? self::BENEFIT_BELUM : self::BENEFIT_SUDAH;
+    }
+
+    /**
+     * Beri kode akses kawasan bila belum punya. Idempoten: kode yang sudah
+     * dipegang tamu tidak pernah diganti, berapa kali pun status berubah.
+     */
+    public function ensureAccessCode(): void
+    {
+        if ($this->kode_akses_kawasan !== null) {
+            return;
+        }
+
+        do {
+            $code = self::ACCESS_CODE_PREFIX;
+            for ($i = 0; $i < 6; $i++) {
+                $code .= self::ACCESS_CODE_ALPHABET[random_int(0, strlen(self::ACCESS_CODE_ALPHABET) - 1)];
+            }
+        } while (static::withoutGlobalScopes()
+            ->where('tenant_id', $this->tenant_id)
+            ->where('kode_akses_kawasan', $code)
+            ->exists());
+
+        $this->update(['kode_akses_kawasan' => $code]);
     }
 
     public function canTransitionTo(string $status): bool

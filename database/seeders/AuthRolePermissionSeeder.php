@@ -182,6 +182,7 @@ class AuthRolePermissionSeeder extends Seeder
 
             // Benefit (Fase 6)
             'benefits:index' => 'Lihat panel benefit',
+            'benefits:update' => 'Tandai benefit sudah ditunjukkan',
             'benefits:resend' => 'Kirim ulang kode benefit',
 
             // CRM + Keuangan (Fase 7)

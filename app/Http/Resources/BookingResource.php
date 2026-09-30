@@ -21,6 +21,9 @@ class BookingResource extends JsonResource
         return [
             'id' => $this->id,
             'kode_booking' => $this->kode_booking,
+            // NULL sampai booking dibayar (DP/Lunas) — lihat M6.
+            'kode_akses_kawasan' => $this->kode_akses_kawasan,
+            'benefit_status' => $this->benefitStatus(),
 
             'guest' => [
                 'id' => $this->guest?->id,

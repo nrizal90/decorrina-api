@@ -292,6 +292,12 @@ class BookingController extends Controller
         DB::transaction(function () use ($booking, $target) {
             $booking->update(['status' => $target]);
             Ledger::recordForStatus($booking, $target);
+
+            // Belum ada payment gateway: admin menandai DP/Lunas di sini, jadi
+            // di sinilah tamu "sudah bayar" dan berhak atas kode akses (M6).
+            if (in_array($target, Booking::PAID_STATUSES, true)) {
+                $booking->ensureAccessCode();
+            }
         });
 
         return $this->ok(

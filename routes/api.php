@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AddonController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BenefitCodeController;
 use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\DashboardController;
@@ -176,5 +177,11 @@ Route::middleware(['auth:sanctum', 'tenant', 'rbac'])->group(function () {
         Route::post('/addons', [AddonController::class, 'store'])->name('addons:store');
         Route::match(['put', 'patch'], '/addons/{addon}', [AddonController::class, 'update'])->name('addons:update');
         Route::delete('/addons/{addon}', [AddonController::class, 'destroy'])->name('addons:destroy');
+
+        // Kode benefit & akses kawasan (B6, Fase 6). {booking}: kodenya
+        // menempel di booking, tidak ada tabel terpisah.
+        Route::get('/benefit-codes', [BenefitCodeController::class, 'index'])->name('benefits:index');
+        Route::patch('/benefit-codes/{booking}', [BenefitCodeController::class, 'update'])->name('benefits:update');
+        Route::post('/benefit-codes/{booking}/resend', [BenefitCodeController::class, 'resend'])->name('benefits:resend');
     });
 });
