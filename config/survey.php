@@ -4,49 +4,33 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Survey Lokasi (A5)
+    | Survey Lokasi (A5 & B4)
     |--------------------------------------------------------------------------
     |
-    | Slot survey TIDAK disimpan sebagai baris template di database — slot
-    | dibangkitkan dari sesi di bawah untuk setiap tanggal yang masih memenuhi
-    | syarat, lalu dikurangi slot yang sudah terpakai. Kalau slot disimpan,
-    | seseorang harus membuat ribuan baris kosong lebih dulu dan merawatnya.
-    |
-    | Angka-angka di sini berasal dari layar Settings (docs/05 "Sudah
-    | dipastikan"), yang statusnya masih DEFAULT UI dan belum dikonfirmasi ke
-    | klien. Ditaruh di config, bukan disebar di kode, supaya saat modul
-    | Settings jadi nanti sumbernya tinggal dipindah ke sana.
+    | CR-07 (klarifikasi klien 27 Sep 2026): tidak ada slot baku lagi. Tamu
+    | memilih tanggal, lalu jam mulai & jam selesai sendiri. Jam yang boleh
+    | dipilih bergantung pada keadaan VILLA pada tanggal itu, dan satu villa
+    | hanya bisa disurvei satu rombongan pada satu waktu (jam tidak boleh
+    | bertumpuk). Lihat App\Support\SurveySlots.
     |
     */
 
-    'sessions' => [
-        ['code' => 'Pagi', 'start' => '09:00', 'end' => '11:00'],
-        ['code' => 'Siang', 'start' => '13:00', 'end' => '15:00'],
-    ],
+    /* Jam operasional survey bila villa kosong pada tanggal itu. */
+    'window_empty' => ['start' => '07:00', 'end' => '20:00'],
 
     /*
-    | Survey paling lambat H-7 sebelum check-in. Tim butuh jeda untuk menyiapkan
-    | apa pun yang muncul dari hasil survey.
+    | Bila villa ada tamu (termasuk hari check-in & check-out tamu), survey
+    | hanya di jam ini supaya tidak mengganggu.
     */
-    'deadline_days' => env('SURVEY_DEADLINE_DAYS', 7),
+    'window_occupied' => ['start' => '12:00', 'end' => '14:00'],
+
+    /* Survey paling lambat H-1 sebelum check-in. */
+    'deadline_days' => env('SURVEY_DEADLINE_DAYS', 1),
 
     /*
-    | Jeda paling cepat dari hari ini. Survey untuk besok pagi tidak realistis
-    | bagi tim lapangan.
+    | Jeda paling cepat dari hari ini untuk jalur customer. Survey untuk
+    | besok pagi tidak realistis bagi tim lapangan. Admin tidak dibatasi.
     */
     'lead_days' => env('SURVEY_LEAD_DAYS', 2),
-
-    /*
-    | Berapa survey yang sanggup dikerjakan dalam satu sesi. Satu tim, satu
-    | kunjungan — naikkan bila klien punya lebih dari satu tim survey.
-    */
-    'capacity_per_session' => env('SURVEY_CAPACITY_PER_SESSION', 1),
-
-    /*
-    | Batas jumlah slot yang ditawarkan ke pengunjung. Tanpa ini, check-in yang
-    | masih berbulan-bulan lagi menghasilkan daftar puluhan slot yang justru
-    | menyulitkan memilih.
-    */
-    'max_slots_offered' => 12,
 
 ];

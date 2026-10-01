@@ -64,7 +64,8 @@ class StoreBookingRequest extends FormRequest
             // barisnya baru dibuat setelah booking benar-benar jadi.
             'survey' => ['nullable', 'array'],
             'survey.date' => ['required_with:survey', 'date_format:Y-m-d'],
-            'survey.session' => ['required_with:survey', 'string', 'max:30'],
+            'survey.start_time' => ['required_with:survey', 'date_format:H:i'],
+            'survey.end_time' => ['required_with:survey', 'date_format:H:i', 'after:survey.start_time'],
             'survey.notes' => ['nullable', 'string'],
 
             'notes' => ['nullable', 'string'],

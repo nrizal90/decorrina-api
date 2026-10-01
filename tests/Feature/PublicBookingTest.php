@@ -389,23 +389,23 @@ class PublicBookingTest extends TestCase
     {
         $checkIn = Carbon::today()->addDays(30);
 
-        $slot = $this->getJson('/api/villas/villa-de-corrinna/survey-slots?check_in='.$checkIn->toDateString())
-            ->json('data.slots.0');
+        $surveyDate = Carbon::today()->addDays(5)->toDateString();
 
         $this->book([
             'check_in' => $checkIn->toDateString(),
             'check_out' => $checkIn->copy()->addDays(2)->toDateString(),
             'survey' => [
-                'date' => $slot['date'],
-                'session' => $slot['session'],
-                'notes' => 'mohon setelah jam 10',
+                'date' => $surveyDate,
+                'start_time' => '10:00',
+                'end_time' => '11:00',
+                'notes' => 'datang berempat',
             ],
         ])->assertCreated();
 
         $survey = Survey::firstOrFail();
 
         // Muncul di papan admin B4 lengkap dengan tautan booking-nya.
-        $this->assertSame($slot['date'], $survey->scheduled_date->toDateString());
+        $this->assertSame($surveyDate, $survey->scheduled_date->toDateString());
         $this->assertNotNull($survey->booking_id);
         $this->assertSame(Survey::STATUS_TERJADWAL, $survey->status);
     }
@@ -417,8 +417,8 @@ class PublicBookingTest extends TestCase
         $this->book([
             'check_in' => $checkIn->toDateString(),
             'check_out' => $checkIn->copy()->addDays(2)->toDateString(),
-            // H-1: jauh melewati batas H-7.
-            'survey' => ['date' => $checkIn->copy()->subDay()->toDateString(), 'session' => 'Pagi'],
+            // Hari check-in sendiri: melewati batas H-1.
+            'survey' => ['date' => $checkIn->toDateString(), 'start_time' => '10:00', 'end_time' => '11:00'],
         ])->assertStatus(422);
 
         // Booking gagal berarti tidak ada apa pun yang tertinggal.

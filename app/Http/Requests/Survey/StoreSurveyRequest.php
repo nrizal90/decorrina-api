@@ -29,12 +29,13 @@ class StoreSurveyRequest extends FormRequest
             'guest_name' => ['required', 'string', 'max:255'],
             'guest_id' => ['nullable', 'integer', new ExistsInTenant('guests')],
 
-            // Dasar aturan H-7 ketika belum ada booking. Opsional karena calon
+            // Dasar aturan H-1 ketika belum ada booking. Opsional karena calon
             // tamu kadang menyurvei dulu sebelum punya tanggal pasti.
             'planned_check_in' => ['nullable', 'date_format:Y-m-d'],
 
             'scheduled_date' => ['required', 'date_format:Y-m-d'],
             'scheduled_time' => ['required', 'date_format:H:i'],
+            'scheduled_end_time' => ['required', 'date_format:H:i', 'after:scheduled_time'],
 
             'pic_user_id' => ['nullable', 'integer', new ExistsInTenant('users')],
             'notes' => ['nullable', 'string'],

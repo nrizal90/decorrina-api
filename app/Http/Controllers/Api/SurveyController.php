@@ -12,7 +12,6 @@ use App\Models\User;
 use App\Support\SurveySlots;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use OpenApi\Attributes as OA;
 
 /**
@@ -81,25 +80,29 @@ class SurveyController extends Controller
         Menjadwalkan survey dari sisi admin, untuk calon tamu yang menghubungi
         langsung. Booking dan item boleh kosong.
 
-        Aturan H-7 hanya ditegakkan bila `planned_check_in` diisi — tanpa
-        tanggal rencana menginap, tidak ada yang bisa dihitung mundur.
-
-        Sesi diturunkan dari jam yang diisi: 09:30 masuk sesi Pagi, sehingga
-        jadwal ini ikut memakan kuota slot yang ditawarkan ke customer. Jam di
-        luar jam operasional tidak menutup slot mana pun.
+        Aturan sama dengan jalur customer (CR-07): jam harus di dalam jendela
+        villa (07:00–20:00 kosong, 12:00–14:00 ada tamu) dan tidak bertumpuk
+        dengan survey lain di villa yang sama. Batas H-1 hanya ditegakkan bila
+        `planned_check_in` diisi. Admin tidak terkena jeda H+2.
         TXT,
         responses: [
             new OA\Response(response: 201, description: 'Survey dijadwalkan'),
-            new OA\Response(response: 422, description: 'Validasi gagal / melewati batas H-7', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+            new OA\Response(response: 422, description: 'Validasi gagal / jam bentrok / di luar jendela villa', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
         ]
     )]
     public function store(StoreSurveyRequest $request): JsonResponse
     {
         $date = $request->string('scheduled_date')->toString();
         $time = $request->string('scheduled_time')->toString();
+        $endTime = $request->string('scheduled_end_time')->toString();
 
-        if ($error = $this->validateAgainstDeadline($request->input('planned_check_in'), $date)) {
-            return $error;
+        $rejection = SurveySlots::rejectionFor(
+            $request->integer('category_id'), $date, $time, $endTime,
+            $request->input('planned_check_in'), enforceLeadTime: false,
+        );
+
+        if ($rejection !== null) {
+            return $this->error($rejection, 422);
         }
 
         $survey = Survey::create([
@@ -110,7 +113,7 @@ class SurveyController extends Controller
             'planned_check_in' => $request->input('planned_check_in'),
             'scheduled_date' => $date,
             'scheduled_time' => $time,
-            'session' => SurveySlots::sessionForTime($time),
+            'scheduled_end_time' => $endTime,
             'pic_user_id' => $request->input('pic_user_id'),
             'status' => Survey::STATUS_TERJADWAL,
             'notes' => $request->input('notes'),
@@ -143,22 +146,25 @@ class SurveyController extends Controller
     public function update(UpdateSurveyRequest $request, Survey $survey): JsonResponse
     {
         $data = $request->safe()->only([
-            'status', 'report', 'scheduled_date', 'scheduled_time', 'pic_user_id', 'notes',
+            'status', 'report', 'scheduled_date', 'scheduled_time', 'scheduled_end_time', 'pic_user_id', 'notes',
         ]);
 
-        if (array_key_exists('scheduled_date', $data)) {
-            $checkIn = $survey->booking?->check_in?->toDateString()
-                ?? $survey->planned_check_in?->toDateString();
+        // Jadwal dipindah -> periksa ulang dengan nilai gabungan (yang tidak
+        // dikirim tetap memakai nilai lama), mengecualikan survey ini sendiri.
+        if (array_intersect_key($data, array_flip(['scheduled_date', 'scheduled_time', 'scheduled_end_time']))) {
+            $rejection = SurveySlots::rejectionFor(
+                $survey->category_id,
+                $data['scheduled_date'] ?? $survey->scheduled_date->toDateString(),
+                $data['scheduled_time'] ?? substr((string) $survey->scheduled_time, 0, 5),
+                $data['scheduled_end_time'] ?? substr((string) $survey->scheduled_end_time, 0, 5),
+                $survey->booking?->check_in?->toDateString() ?? $survey->planned_check_in?->toDateString(),
+                enforceLeadTime: false,
+                exceptSurveyId: $survey->id,
+            );
 
-            if ($error = $this->validateAgainstDeadline($checkIn, $data['scheduled_date'])) {
-                return $error;
+            if ($rejection !== null) {
+                return $this->error($rejection, 422);
             }
-        }
-
-        // Jam berubah -> sesinya ikut berubah, kalau tidak kuota slot customer
-        // dihitung berdasarkan sesi yang sudah tidak sesuai jamnya.
-        if (array_key_exists('scheduled_time', $data)) {
-            $data['session'] = SurveySlots::sessionForTime($data['scheduled_time']);
         }
 
         if (! empty($data['report']) && ! array_key_exists('status', $data)) {
@@ -171,28 +177,6 @@ class SurveyController extends Controller
             new SurveyResource($survey->fresh()->load(['category', 'item', 'guest', 'booking', 'pic'])),
             'Survey diperbarui',
         );
-    }
-
-    /**
-     * Batas H-7 hanya bisa ditegakkan bila tanggal rencana menginap diketahui.
-     * Calon tamu yang menyurvei sebelum punya tanggal pasti tidak diblokir.
-     */
-    private function validateAgainstDeadline(?string $checkIn, string $scheduledDate): ?JsonResponse
-    {
-        if ($checkIn === null) {
-            return null;
-        }
-
-        $deadline = SurveySlots::deadlineFor($checkIn);
-
-        if (Carbon::parse($scheduledDate)->startOfDay()->greaterThan($deadline)) {
-            return $this->error(
-                'Survey harus dijadwalkan paling lambat '.$deadline->toDateString().' (H-7 sebelum check-in).',
-                422,
-            );
-        }
-
-        return null;
     }
 
     /**

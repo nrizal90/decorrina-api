@@ -2,168 +2,126 @@
 
 namespace App\Support;
 
+use App\Models\Booking;
 use App\Models\Survey;
 use Illuminate\Support\Carbon;
 
 /**
- * Slot survey yang bisa dipilih pengunjung (A5).
+ * Aturan jadwal survey lokasi (CR-07, klarifikasi klien 27 Sep 2026).
  *
- * Slot dibangkitkan, tidak disimpan: untuk setiap tanggal yang masih memenuhi
- * syarat, tiap sesi di config/survey.php ditawarkan, lalu yang kuotanya sudah
- * habis dibuang. Menyimpan slot kosong berarti seseorang harus membuat dan
- * merawat ribuan baris yang tidak pernah dipakai.
+ * Tidak ada slot baku: tamu memilih tanggal, lalu jam mulai & jam selesai.
+ * Satu implementasi dipakai layar A5 (menampilkan jendela & jam terisi),
+ * booking customer/admin, dan papan survey admin B4.
  *
- * Tiga aturan tanggal, semuanya dari config:
- *  - `lead_days`     : paling cepat H+2 dari hari ini (tim butuh persiapan).
- *  - `deadline_days` : paling lambat H-7 sebelum check-in.
- *  - `max_slots_offered` : daftar dipotong supaya tetap bisa dipilih manusia.
+ *  - Jendela jam per VILLA per tanggal: 07:00–20:00 bila villa kosong,
+ *    12:00–14:00 bila ada tamu. Hari check-in & check-out tamu dihitung
+ *    "ada tamu".
+ *  - Satu villa satu survey pada satu waktu: jam tidak boleh bertumpuk
+ *    dengan survey lain di villa yang sama.
+ *  - Paling lambat H-1 sebelum check-in (bila check-in diketahui).
+ *  - Jalur customer: paling cepat H+2 dari hari ini.
  *
- * Angkanya masih DEFAULT UI dan belum dikonfirmasi klien (docs/05) — karena
- * itu tinggal di config, bukan tersebar sebagai angka di dalam kode.
+ * Jam dibandingkan sebagai string "HH:MM" — aman karena selalu 2 digit.
  */
 class SurveySlots
 {
-    /**
-     * Tanggal terakhir yang masih boleh dipakai survey untuk sebuah check-in.
-     */
+    /** Tanggal terakhir yang masih boleh dipakai survey untuk sebuah check-in. */
     public static function deadlineFor(string $checkIn): Carbon
     {
         return Carbon::parse($checkIn)->startOfDay()->subDays((int) config('survey.deadline_days'));
     }
 
-    /**
-     * Tanggal paling awal yang boleh ditawarkan.
-     */
+    /** Tanggal paling awal untuk jalur customer. */
     public static function earliest(): Carbon
     {
         return Carbon::today()->addDays((int) config('survey.lead_days'));
     }
 
-    /**
-     * Apakah satu slot masih sah DAN masih punya kuota?
-     *
-     * Dipakai ulang saat booking benar-benar dibuat: daftar slot yang dilihat
-     * pengunjung bisa sudah basi beberapa menit kemudian, jadi pilihannya
-     * diperiksa lagi alih-alih dipercaya begitu saja.
-     */
-    public static function isBookable(string $date, string $session, string $checkIn): bool
+    /** Ada booking aktif di villa ini yang menempati tanggal itu (check-in s/d check-out, inklusif)? */
+    public static function villaOccupied(int $categoryId, string $date): bool
     {
+        return Booking::query()
+            ->blocking()
+            ->whereHas('item', fn ($q) => $q->where('category_id', $categoryId))
+            ->whereDate('check_in', '<=', $date)
+            ->whereDate('check_out', '>=', $date)
+            ->exists();
+    }
+
+    /** @return array{start: string, end: string} */
+    public static function windowFor(int $categoryId, string $date): array
+    {
+        return self::villaOccupied($categoryId, $date)
+            ? config('survey.window_occupied')
+            : config('survey.window_empty');
+    }
+
+    /**
+     * Rentang jam yang sudah terpakai survey lain di villa ini pada tanggal itu.
+     *
+     * @return array<int, array{start: string, end: string}>
+     */
+    public static function takenFor(int $categoryId, string $date, ?int $exceptSurveyId = null): array
+    {
+        return Survey::query()
+            ->where('category_id', $categoryId)
+            ->whereDate('scheduled_date', $date)
+            ->whereIn('status', Survey::OCCUPYING_STATUSES)
+            ->when($exceptSurveyId, fn ($q) => $q->whereKeyNot($exceptSurveyId))
+            ->orderBy('scheduled_time')
+            ->get(['scheduled_time', 'scheduled_end_time'])
+            ->map(fn ($s) => [
+                'start' => substr((string) $s->scheduled_time, 0, 5),
+                'end' => substr((string) $s->scheduled_end_time, 0, 5),
+            ])
+            ->all();
+    }
+
+    /**
+     * Pesan error bila jadwal tidak sah, null bila boleh.
+     *
+     * Dipanggil ulang saat booking/survey benar-benar disimpan — jam yang
+     * dilihat tamu di layar bisa sudah diambil orang lain beberapa menit
+     * kemudian.
+     */
+    public static function rejectionFor(
+        int $categoryId,
+        string $date,
+        string $start,
+        string $end,
+        ?string $checkIn,
+        bool $enforceLeadTime = true,
+        ?int $exceptSurveyId = null,
+    ): ?string {
         $day = Carbon::parse($date)->startOfDay();
 
-        if (! self::isKnownSession($session)) {
-            return false;
+        if ($end <= $start) {
+            return 'Jam selesai survey harus setelah jam mulai.';
         }
 
-        if ($day->lessThan(self::earliest()) || $day->greaterThan(self::deadlineFor($checkIn))) {
-            return false;
+        if ($enforceLeadTime && $day->lessThan(self::earliest())) {
+            return 'Survey paling cepat '.self::earliest()->toDateString().'.';
         }
 
-        return self::remainingCapacity($date, $session) > 0;
-    }
-
-    /**
-     * Slot yang ditawarkan ke layar A5 untuk sebuah tanggal check-in.
-     *
-     * @return array<int, array{date: string, session: string, start: string, end: string}>
-     */
-    public static function availableFor(string $checkIn): array
-    {
-        $deadline = self::deadlineFor($checkIn);
-        $cursor = self::earliest();
-        $max = (int) config('survey.max_slots_offered');
-
-        // Check-in yang terlalu dekat: deadline sudah lewat, tidak ada slot.
-        // Bukan kesalahan — layar A5 yang menjelaskannya ke pengunjung.
-        $slots = [];
-
-        while ($cursor->lessThanOrEqualTo($deadline) && count($slots) < $max) {
-            foreach (config('survey.sessions') as $session) {
-                if (count($slots) >= $max) {
-                    break;
-                }
-
-                if (self::remainingCapacity($cursor->toDateString(), $session['code']) > 0) {
-                    $slots[] = [
-                        'date' => $cursor->toDateString(),
-                        'session' => $session['code'],
-                        'start' => $session['start'],
-                        'end' => $session['end'],
-                    ];
-                }
-            }
-
-            $cursor->addDay();
+        if ($checkIn !== null && $day->greaterThan(self::deadlineFor($checkIn))) {
+            return 'Survey harus dijadwalkan paling lambat '.self::deadlineFor($checkIn)->toDateString().' (H-1 sebelum check-in).';
         }
 
-        return $slots;
-    }
+        $window = self::windowFor($categoryId, $date);
 
-    /**
-     * Sesi mana yang memuat sebuah jam, bila ada.
-     *
-     * Admin (B4) bebas menuliskan jam berapa pun, sementara customer (A5)
-     * memilih sesi baku. Keduanya memakai tim yang sama, jadi jadwal admin
-     * pukul 09:30 HARUS ikut memakan kuota sesi Pagi — kalau tidak, layar
-     * customer tetap menawarkan slot yang sebenarnya sudah terpakai.
-     *
-     * Jam di luar seluruh sesi (mis. 17:00) mengembalikan null: kunjungan di
-     * luar jam operasional tidak menutup slot mana pun.
-     */
-    public static function sessionForTime(string $time): ?string
-    {
-        $minutes = self::toMinutes($time);
+        if ($start < $window['start'] || $end > $window['end']) {
+            $reason = self::villaOccupied($categoryId, $date) ? 'villa ada tamu pada tanggal itu' : 'villa kosong pada tanggal itu';
 
-        foreach (config('survey.sessions') as $session) {
-            if ($minutes >= self::toMinutes($session['start']) && $minutes < self::toMinutes($session['end'])) {
-                return $session['code'];
+            return "Survey hanya bisa pukul {$window['start']}–{$window['end']} ({$reason}).";
+        }
+
+        // ponytail: cek-lalu-simpan tanpa lock; dua pemesan di detik yang sama bisa lolos berdua. Tambah lock per villa bila itu terjadi.
+        foreach (self::takenFor($categoryId, $date, $exceptSurveyId) as $taken) {
+            if ($taken['start'] < $end && $taken['end'] > $start) {
+                return "Jam itu bentrok dengan survey lain pukul {$taken['start']}–{$taken['end']}.";
             }
         }
 
         return null;
-    }
-
-    /** Jam mulai sebuah sesi, dipakai saat customer memilih slot baku. */
-    public static function startTimeOf(string $session): ?string
-    {
-        foreach (config('survey.sessions') as $known) {
-            if ($known['code'] === $session) {
-                return $known['start'];
-            }
-        }
-
-        return null;
-    }
-
-    private static function toMinutes(string $time): int
-    {
-        [$hour, $minute] = array_pad(explode(':', $time), 2, '0');
-
-        return ((int) $hour * 60) + (int) $minute;
-    }
-
-    private static function isKnownSession(string $session): bool
-    {
-        foreach (config('survey.sessions') as $known) {
-            if ($known['code'] === $session) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Sisa kuota sebuah sesi. Survey `Dibatalkan` mengembalikan slotnya,
-     * sejalan dengan cara booking yang dibatalkan melepaskan tanggalnya.
-     */
-    private static function remainingCapacity(string $date, string $session): int
-    {
-        $taken = Survey::query()
-            ->whereDate('scheduled_date', $date)
-            ->where('session', $session)
-            ->whereIn('status', Survey::OCCUPYING_STATUSES)
-            ->count();
-
-        return (int) config('survey.capacity_per_session') - $taken;
     }
 }

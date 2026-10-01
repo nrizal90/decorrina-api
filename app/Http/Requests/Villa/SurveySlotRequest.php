@@ -6,7 +6,7 @@ use Illuminate\Foundation\Http\FormRequest;
 
 /**
  * Slot survey ditanyakan relatif terhadap TANGGAL CHECK-IN, karena batasnya
- * H-7 sebelum menginap - bukan rentang bebas yang ditentukan frontend.
+ * H-1 sebelum menginap - bukan rentang bebas yang ditentukan frontend.
  */
 class SurveySlotRequest extends FormRequest
 {
@@ -20,6 +20,7 @@ class SurveySlotRequest extends FormRequest
         return [
             'check_in' => ['required', 'date_format:Y-m-d'],
             'item_id' => ['nullable', 'integer'],
+            'date' => ['nullable', 'date_format:Y-m-d'],
         ];
     }
 }

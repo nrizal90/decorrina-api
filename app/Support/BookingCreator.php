@@ -38,7 +38,7 @@ class BookingCreator
      *     vehicle_count?: ?int,
      *     payment_mode?: ?string,
      *     addons?: array<int, array{addon_id: int, qty?: int}>,
-     *     survey?: ?array{date: string, session: string, notes?: ?string},
+     *     survey?: ?array{date: string, start_time: string, end_time: string, notes?: ?string},
      *     notes?: ?string,
      * }  $data
      */
@@ -143,7 +143,7 @@ class BookingCreator
     }
 
     /**
-     * @param  array{date: string, session: string, notes?: ?string}  $survey
+     * @param  array{date: string, start_time: string, end_time: string, notes?: ?string}  $survey
      */
     private static function createSurvey(
         Booking $booking,
@@ -162,10 +162,8 @@ class BookingCreator
             'guest_name' => $guest->name,
             'planned_check_in' => $checkIn,
             'scheduled_date' => $survey['date'],
-            // Jam disimpan juga, bukan hanya kode sesi: papan admin menampilkan
-            // "13 Agu 2026, 10:00" untuk survey dari jalur mana pun.
-            'scheduled_time' => SurveySlots::startTimeOf($survey['session']),
-            'session' => $survey['session'],
+            'scheduled_time' => $survey['start_time'],
+            'scheduled_end_time' => $survey['end_time'],
             'status' => Survey::STATUS_TERJADWAL,
             'notes' => $survey['notes'] ?? null,
         ]);

@@ -29,6 +29,7 @@ class UpdateSurveyRequest extends FormRequest
 
             'scheduled_date' => ['sometimes', 'date_format:Y-m-d'],
             'scheduled_time' => ['sometimes', 'date_format:H:i'],
+            'scheduled_end_time' => ['sometimes', 'date_format:H:i'],
             'pic_user_id' => ['sometimes', 'nullable', 'integer', new ExistsInTenant('users')],
             'notes' => ['sometimes', 'nullable', 'string'],
         ];

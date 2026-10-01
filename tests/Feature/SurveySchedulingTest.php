@@ -15,12 +15,12 @@ use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
- * Survey lokasi (A5, Fase 5).
+ * Survey lokasi (A5) — CR-07, klarifikasi klien 27 Sep 2026.
  *
- * Slot TIDAK ditabelkan — dibangkitkan dari config/survey.php lalu dikurangi
- * yang sudah dipesan. Test di sini menjaga tiga aturan tanggalnya (H+2, H-7,
- * kuota per sesi) dan memastikan daftar yang dilihat pengunjung sama dengan
- * yang diterima saat booking dibuat.
+ * Tamu memilih tanggal lalu jam mulai & selesai. Jendela jam per villa
+ * (07:00–20:00 kosong, 12:00–14:00 ada tamu), tidak bertumpuk per villa,
+ * paling lambat H-1 check-in, paling cepat H+2. Endpoint jadwal dan
+ * pemeriksaan saat booking memakai aturan yang sama.
  */
 class SurveySchedulingTest extends TestCase
 {
@@ -42,101 +42,86 @@ class SurveySchedulingTest extends TestCase
             ->firstOrFail();
     }
 
-    /** Check-in yang cukup jauh agar selalu ada slot yang sah. */
+    /** Check-in yang cukup jauh agar selalu ada tanggal survey yang sah. */
     private function checkIn(): string
     {
         return Carbon::today()->addDays(30)->toDateString();
     }
 
+    private function surveyDate(): string
+    {
+        return Carbon::today()->addDays(5)->toDateString();
+    }
+
     /** @return array<string, mixed> */
-    private function slots(?string $checkIn = null, array $extra = []): array
+    private function schedule(array $query = []): array
     {
-        $response = $this->getJson('/api/villas/villa-de-corrinna/survey-slots?'.http_build_query(
-            ['check_in' => $checkIn ?? $this->checkIn()] + $extra
-        ));
-
-        $response->assertOk();
-
-        return $response->json('data');
+        return $this->getJson('/api/villas/villa-de-corrinna/survey-schedule?'.http_build_query(
+            $query + ['check_in' => $this->checkIn()]
+        ))->assertOk()->json('data');
     }
 
-    // ---------------------------------------------------------------- slot
+    // ------------------------------------------------------------ endpoint
 
-    public function test_slots_are_public(): void
+    public function test_schedule_returns_date_bounds_h_plus_2_to_h_minus_1(): void
     {
-        $this->getJson('/api/villas/villa-de-corrinna/survey-slots?check_in='.$this->checkIn())
-            ->assertOk();
+        $data = $this->schedule();
+
+        $this->assertSame(Carbon::today()->addDays(2)->toDateString(), $data['earliest']);
+        $this->assertSame(Carbon::parse($this->checkIn())->subDay()->toDateString(), $data['deadline']);
+        $this->assertNull($data['day']);
     }
 
-    /** Batasnya H-7 sebelum check-in, dan itu dikembalikan apa adanya. */
-    public function test_deadline_is_seven_days_before_check_in(): void
+    public function test_empty_villa_day_offers_seven_to_eight(): void
     {
-        $checkIn = $this->checkIn();
+        $day = $this->schedule(['date' => $this->surveyDate()])['day'];
 
-        $this->assertSame(
-            Carbon::parse($checkIn)->subDays(7)->toDateString(),
-            $this->slots($checkIn)['deadline'],
-        );
+        $this->assertFalse($day['occupied']);
+        $this->assertSame(['start' => '07:00', 'end' => '20:00'], $day['window']);
+        $this->assertSame([], $day['taken']);
     }
 
-    public function test_offered_slots_respect_the_lead_time_and_deadline(): void
+    public function test_occupied_villa_day_offers_noon_window(): void
     {
-        $data = $this->slots();
+        Sanctum::actingAs(User::where('email', 'admin@decorinna.test')->firstOrFail());
+        $this->postJson('/api/bookings', $this->booking([
+            'guest_phone' => '081200000050',
+            'check_in' => $this->surveyDate(),
+            'check_out' => Carbon::parse($this->surveyDate())->addDay()->toDateString(),
+        ]))->assertCreated();
 
-        $earliest = Carbon::today()->addDays(2);
-        $deadline = Carbon::parse($data['deadline']);
+        // Hari check-out juga dihitung ada tamu.
+        $checkoutDay = Carbon::parse($this->surveyDate())->addDay()->toDateString();
+        $day = $this->schedule(['date' => $checkoutDay])['day'];
 
-        $this->assertNotEmpty($data['slots']);
-
-        foreach ($data['slots'] as $slot) {
-            $date = Carbon::parse($slot['date']);
-
-            $this->assertTrue($date->greaterThanOrEqualTo($earliest), "{$slot['date']} terlalu cepat.");
-            $this->assertTrue($date->lessThanOrEqualTo($deadline), "{$slot['date']} melewati deadline.");
-        }
+        $this->assertTrue($day['occupied']);
+        $this->assertSame(['start' => '12:00', 'end' => '14:00'], $day['window']);
     }
 
-    /**
-     * Check-in yang terlalu dekat bukan error — daftarnya memang kosong, dan
-     * `deadline` tetap dikirim supaya layar bisa menjelaskan alasannya.
-     */
-    public function test_check_in_too_soon_yields_no_slots(): void
-    {
-        $data = $this->slots(Carbon::today()->addDays(3)->toDateString());
-
-        $this->assertSame([], $data['slots']);
-        $this->assertNotNull($data['deadline']);
-    }
-
-    public function test_slots_report_whether_the_item_needs_a_survey(): void
+    public function test_schedule_reports_whether_the_item_needs_a_survey(): void
     {
         $item = $this->item();
 
-        $this->assertSame(
-            (bool) $item->requires_survey,
-            $this->slots(null, ['item_id' => $item->id])['requires_survey'],
-        );
+        $this->assertSame((bool) $item->requires_survey, $this->schedule(['item_id' => $item->id])['requires_survey']);
     }
 
-    public function test_slots_reject_an_item_from_another_villa(): void
+    public function test_schedule_rejects_an_item_from_another_villa(): void
     {
-        $this->getJson('/api/villas/villa-cendana-wangi/survey-slots?'.http_build_query([
+        $this->getJson('/api/villas/villa-cendana-wangi/survey-schedule?'.http_build_query([
             'check_in' => $this->checkIn(),
             'item_id' => $this->item()->id,
         ]))->assertStatus(404);
     }
 
-    public function test_slots_require_a_check_in_date(): void
+    public function test_schedule_requires_a_check_in_date(): void
     {
-        $this->getJson('/api/villas/villa-de-corrinna/survey-slots')->assertStatus(422);
+        $this->getJson('/api/villas/villa-de-corrinna/survey-schedule')->assertStatus(422);
     }
 
     // ------------------------------------------------- survey saat booking
 
-    private function book(array $overrides = []): array
+    private function booking(array $overrides = []): array
     {
-        Sanctum::actingAs(User::where('email', 'admin@decorinna.test')->firstOrFail());
-
         $item = $this->item();
         $checkIn = $this->checkIn();
 
@@ -150,114 +135,84 @@ class SurveySchedulingTest extends TestCase
         ], $overrides);
     }
 
+    private function book(array $overrides = []): \Illuminate\Testing\TestResponse
+    {
+        Sanctum::actingAs(User::where('email', 'admin@decorinna.test')->firstOrFail());
+
+        return $this->postJson('/api/bookings', $this->booking($overrides));
+    }
+
+    private function survey(string $start = '09:00', string $end = '10:00', ?string $date = null): array
+    {
+        return ['date' => $date ?? $this->surveyDate(), 'start_time' => $start, 'end_time' => $end];
+    }
+
     public function test_booking_can_carry_a_survey_schedule(): void
     {
-        $slot = $this->slots()['slots'][0];
-
-        $response = $this->postJson('/api/bookings', $this->book([
-            'survey' => [
-                'date' => $slot['date'],
-                'session' => $slot['session'],
-                'notes' => 'mohon setelah jam 10 pagi',
-            ],
-        ]));
+        $response = $this->book(['survey' => $this->survey() + ['notes' => 'datang berempat']]);
 
         $response->assertCreated();
 
         $survey = Survey::firstOrFail();
 
-        $this->assertSame($slot['date'], $survey->scheduled_date->toDateString());
-        $this->assertSame($slot['session'], $survey->session);
+        $this->assertSame($this->surveyDate(), $survey->scheduled_date->toDateString());
+        $this->assertSame('09:00', substr((string) $survey->scheduled_time, 0, 5));
+        $this->assertSame('10:00', substr((string) $survey->scheduled_end_time, 0, 5));
         $this->assertSame(Survey::STATUS_TERJADWAL, $survey->status);
         $this->assertSame($response->json('data.id'), $survey->booking_id);
-
-        // Jalur customer memilih SESI, tapi papan admin menampilkan jam —
-        // jadi jam mulai sesinya ikut disimpan, bukan dibiarkan kosong.
-        $this->assertSame('09:00', substr((string) $survey->scheduled_time, 0, 5));
         $this->assertSame($this->item()->category_id, $survey->category_id);
-        $this->assertNotNull($survey->guest_id);
     }
 
     public function test_booking_without_a_survey_creates_none(): void
     {
-        $this->postJson('/api/bookings', $this->book())->assertCreated();
+        $this->book()->assertCreated();
 
         $this->assertSame(0, Survey::count());
     }
 
-    /**
-     * Kuota per sesi habis -> slot hilang dari daftar DAN ditolak saat dikirim.
-     * Daftar bisa basi beberapa menit setelah dilihat, jadi keduanya harus
-     * memakai aturan yang sama.
-     */
-    public function test_a_taken_slot_disappears_and_is_rejected(): void
+    /** Jam terisi muncul di endpoint DAN ditolak saat dikirim. */
+    public function test_taken_time_is_reported_and_overlap_rejected(): void
     {
-        $slot = $this->slots()['slots'][0];
-        $survey = ['date' => $slot['date'], 'session' => $slot['session']];
+        $this->book(['survey' => $this->survey('09:00', '10:00')])->assertCreated();
 
-        $this->postJson('/api/bookings', $this->book(['survey' => $survey]))->assertCreated();
+        $this->assertSame(
+            [['start' => '09:00', 'end' => '10:00']],
+            $this->schedule(['date' => $this->surveyDate()])['day']['taken'],
+        );
 
-        $stillOffered = collect($this->slots()['slots'])
-            ->contains(fn ($s) => $s['date'] === $slot['date'] && $s['session'] === $slot['session']);
-
-        $this->assertFalse($stillOffered);
-
-        $this->postJson('/api/bookings', $this->book([
+        $next = [
             'guest_phone' => '081200000002',
             'check_in' => Carbon::parse($this->checkIn())->addDays(5)->toDateString(),
             'check_out' => Carbon::parse($this->checkIn())->addDays(7)->toDateString(),
-            'survey' => $survey,
-        ]))->assertStatus(422);
+        ];
+
+        $this->book($next + ['survey' => $this->survey('09:30', '10:30')])->assertStatus(422);
+        $this->book($next + ['survey' => $this->survey('10:00', '11:00')])->assertCreated();
     }
 
-    /** Survey yang dibatalkan mengembalikan slotnya, seperti booking. */
-    public function test_cancelled_survey_frees_its_slot(): void
+    public function test_time_outside_the_window_is_rejected(): void
     {
-        $slot = $this->slots()['slots'][0];
-
-        $this->postJson('/api/bookings', $this->book([
-            'survey' => ['date' => $slot['date'], 'session' => $slot['session']],
-        ]))->assertCreated();
-
-        Survey::firstOrFail()->update(['status' => Survey::STATUS_DIBATALKAN]);
-
-        $offeredAgain = collect($this->slots()['slots'])
-            ->contains(fn ($s) => $s['date'] === $slot['date'] && $s['session'] === $slot['session']);
-
-        $this->assertTrue($offeredAgain);
+        $this->book(['survey' => $this->survey('06:00', '07:30')])->assertStatus(422);
+        $this->assertSame(0, Booking::count());
     }
 
-    public function test_survey_past_the_deadline_is_rejected(): void
+    public function test_survey_on_check_in_day_is_rejected_but_h_minus_1_is_allowed(): void
     {
-        $checkIn = $this->checkIn();
+        $this->book(['survey' => $this->survey(date: $this->checkIn())])->assertStatus(422);
 
-        $this->postJson('/api/bookings', $this->book([
-            'survey' => [
-                // Sehari sebelum check-in — jauh melewati batas H-7.
-                'date' => Carbon::parse($checkIn)->subDay()->toDateString(),
-                'session' => 'Pagi',
-            ],
-        ]))->assertStatus(422);
+        $this->book(['survey' => $this->survey(date: Carbon::parse($this->checkIn())->subDay()->toDateString())])
+            ->assertCreated();
     }
 
-    public function test_unknown_session_is_rejected(): void
+    public function test_end_time_must_follow_start_time(): void
     {
-        $slot = $this->slots()['slots'][0];
-
-        $this->postJson('/api/bookings', $this->book([
-            'survey' => ['date' => $slot['date'], 'session' => 'Malam'],
-        ]))->assertStatus(422);
+        $this->book(['survey' => $this->survey('10:00', '09:00')])->assertStatus(422);
     }
 
     public function test_survey_is_not_created_when_the_booking_fails(): void
     {
-        $slot = $this->slots()['slots'][0];
-
         // pax di luar kapasitas -> booking ditolak; survey tidak boleh tertinggal.
-        $this->postJson('/api/bookings', $this->book([
-            'pax' => 999,
-            'survey' => ['date' => $slot['date'], 'session' => $slot['session']],
-        ]))->assertStatus(422);
+        $this->book(['pax' => 999, 'survey' => $this->survey()])->assertStatus(422);
 
         $this->assertSame(0, Survey::count());
         $this->assertSame(0, Booking::count());

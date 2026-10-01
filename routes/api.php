@@ -67,7 +67,7 @@ Route::middleware('tenant.public')->group(function () {
     Route::middleware('throttle:60,1')->group(function () {
         Route::get('/villas/{slug}/availability', [VillaController::class, 'availability']);
         Route::get('/villas/{slug}/quote', [VillaController::class, 'quote']);
-        Route::get('/villas/{slug}/survey-slots', [VillaController::class, 'surveySlots']);
+        Route::get('/villas/{slug}/survey-schedule', [VillaController::class, 'surveySchedule']);
     });
 
     /*

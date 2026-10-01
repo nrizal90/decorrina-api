@@ -80,7 +80,7 @@ class PublicBookingController extends Controller
             return $error;
         }
 
-        if ($error = $this->validateSurvey($request->input('survey'), $checkIn)) {
+        if ($error = $this->validateSurvey($request->input('survey'), $item, $checkIn)) {
             return $error;
         }
 
@@ -204,23 +204,21 @@ class PublicBookingController extends Controller
     }
 
     /**
-     * Slot survey diperiksa ulang dengan `SurveySlots` yang sama seperti saat
-     * daftarnya disusun — daftar yang dilihat pengunjung bisa sudah basi.
+     * Jadwal survey diperiksa ulang dengan `SurveySlots` yang sama seperti saat
+     * layar A5 menampilkannya — daftar yang dilihat pengunjung bisa sudah basi.
      *
-     * @param  array{date?: string, session?: string}|null  $survey
+     * @param  array{date: string, start_time: string, end_time: string}|null  $survey
      */
-    private function validateSurvey(?array $survey, string $checkIn): ?JsonResponse
+    private function validateSurvey(?array $survey, Item $item, string $checkIn): ?JsonResponse
     {
         if (empty($survey)) {
             return null;
         }
 
-        $bookable = SurveySlots::isBookable($survey['date'], $survey['session'], $checkIn);
+        $rejection = SurveySlots::rejectionFor(
+            $item->category_id, $survey['date'], $survey['start_time'], $survey['end_time'], $checkIn,
+        );
 
-        if (! $bookable) {
-            return $this->error('Jadwal survey itu sudah tidak tersedia. Silakan pilih slot lain.', 422);
-        }
-
-        return null;
+        return $rejection === null ? null : $this->error($rejection, 422);
     }
 }

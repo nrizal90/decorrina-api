@@ -17,8 +17,8 @@ use Tests\TestCase;
  * Manajemen Survey (B4) — papan admin.
  *
  * Jalur admin berbeda bentuk dari jalur customer (A5): belum tentu ada
- * booking, item, atau tamu terdaftar, dan jamnya bebas. Yang tidak boleh
- * berbeda adalah KUOTA-nya — keduanya memakai tim yang sama.
+ * booking, item, atau tamu terdaftar. Aturan jamnya SAMA (CR-07): jendela
+ * villa, tidak bertumpuk per villa, H-1 — kecuali jeda H+2.
  */
 class SurveyManagementTest extends TestCase
 {
@@ -46,6 +46,7 @@ class SurveyManagementTest extends TestCase
             'guest_name' => 'Rina Pratiwi',
             'scheduled_date' => Carbon::today()->addDays(10)->toDateString(),
             'scheduled_time' => '10:00',
+            'scheduled_end_time' => '11:00',
         ], $overrides);
     }
 
@@ -68,59 +69,101 @@ class SurveyManagementTest extends TestCase
         $this->assertNull($survey->guest_id);
     }
 
-    /**
-     * Jam bebas milik admin tetap dipetakan ke sesi baku, supaya jadwal ini
-     * ikut memakan kuota slot yang ditawarkan ke customer. Tanpa ini, layar
-     * customer masih menawarkan slot yang timnya sudah terpakai.
-     */
-    public function test_time_within_a_session_window_consumes_that_session(): void
+    /** Rentang jam di villa yang sama tidak boleh bertumpuk (1 survey per villa per waktu). */
+    public function test_overlapping_time_in_the_same_villa_is_rejected(): void
     {
-        // Tanggal paling awal yang ditawarkan (H+2). HARUS di dalam jendela
-        // slot yang ditawarkan — memakai tanggal jauh membuat test ini lolos
-        // semu, karena slotnya memang tidak muncul akibat batas jumlah.
-        $date = Carbon::today()->addDays(2)->toDateString();
+        $this->postJson('/api/surveys', $this->payload())->assertCreated();
 
         $this->postJson('/api/surveys', $this->payload([
-            'scheduled_date' => $date,
-            'scheduled_time' => '09:30',
+            'guest_name' => 'Budi', 'scheduled_time' => '10:30', 'scheduled_end_time' => '12:00',
+        ]))->assertStatus(422);
+
+        // Bersambung (mulai tepat saat yang lain selesai) boleh.
+        $this->postJson('/api/surveys', $this->payload([
+            'guest_name' => 'Budi', 'scheduled_time' => '11:00', 'scheduled_end_time' => '12:00',
         ]))->assertCreated();
-
-        $this->assertSame('Pagi', Survey::firstOrFail()->session);
-
-        $slots = collect($this->getJson('/api/villas/villa-de-corrinna/survey-slots?check_in='
-            .Carbon::today()->addDays(40)->toDateString())->json('data.slots'));
-
-        // Pagi hilang karena kuotanya terpakai...
-        $this->assertFalse($slots->contains(
-            fn ($s) => $s['date'] === $date && $s['session'] === 'Pagi'
-        ));
-
-        // ...sementara Siang di tanggal yang sama tetap ada. Ini yang
-        // membuktikan penyebabnya kuota, bukan tanggalnya di luar jendela.
-        $this->assertTrue($slots->contains(
-            fn ($s) => $s['date'] === $date && $s['session'] === 'Siang'
-        ));
     }
 
-    /** Kunjungan di luar jam operasional tidak menutup slot mana pun. */
-    public function test_time_outside_every_session_consumes_no_slot(): void
+    public function test_same_time_in_another_villa_is_allowed(): void
     {
-        $this->postJson('/api/surveys', $this->payload(['scheduled_time' => '17:00']))
-            ->assertCreated();
+        $this->postJson('/api/surveys', $this->payload())->assertCreated();
 
-        $this->assertNull(Survey::firstOrFail()->session);
+        $other = Category::where('slug', 'villa-cendana-wangi')->firstOrFail();
+
+        $this->postJson('/api/surveys', $this->payload(['category_id' => $other->id]))->assertCreated();
     }
 
-    /** H-7 ditegakkan bila rencana check-in diketahui. */
+    public function test_cancelled_survey_frees_its_time(): void
+    {
+        $id = $this->postJson('/api/surveys', $this->payload())->json('data.id');
+        $this->patchJson("/api/surveys/{$id}", ['status' => Survey::STATUS_DIBATALKAN])->assertOk();
+
+        $this->postJson('/api/surveys', $this->payload(['guest_name' => 'Budi']))->assertCreated();
+    }
+
+    public function test_empty_villa_allows_seven_to_eight(): void
+    {
+        $this->postJson('/api/surveys', $this->payload(['scheduled_time' => '06:30', 'scheduled_end_time' => '08:00']))
+            ->assertStatus(422);
+        $this->postJson('/api/surveys', $this->payload(['scheduled_time' => '19:00', 'scheduled_end_time' => '20:30']))
+            ->assertStatus(422);
+        $this->postJson('/api/surveys', $this->payload(['scheduled_time' => '07:00', 'scheduled_end_time' => '08:00']))
+            ->assertCreated();
+        $this->postJson('/api/surveys', $this->payload(['scheduled_time' => '19:00', 'scheduled_end_time' => '20:00']))
+            ->assertCreated();
+    }
+
+    /** Villa ada tamu -> hanya 12:00–14:00; hari check-in & check-out ikut dihitung. */
+    public function test_occupied_villa_only_allows_noon_window_including_checkin_and_checkout_days(): void
+    {
+        $checkIn = Carbon::today()->addDays(10);
+
+        $this->postJson('/api/bookings', [
+            'item_id' => \App\Models\Item::where('name', 'Kamar Superior')->firstOrFail()->id,
+            'guest_name' => 'Tamu Menginap',
+            'guest_phone' => '081200000099',
+            'check_in' => $checkIn->toDateString(),
+            'check_out' => $checkIn->copy()->addDays(2)->toDateString(),
+            'pax' => 10,
+        ])->assertCreated();
+
+        foreach ([0, 1, 2] as $offset) {
+            $date = $checkIn->copy()->addDays($offset)->toDateString();
+
+            $this->postJson('/api/surveys', $this->payload(['scheduled_date' => $date]))
+                ->assertStatus(422);
+            $this->postJson('/api/surveys', $this->payload([
+                'scheduled_date' => $date, 'scheduled_time' => '12:00', 'scheduled_end_time' => '14:00',
+            ]))->assertCreated();
+        }
+
+        // Sehari setelah check-out villa kosong lagi.
+        $this->postJson('/api/surveys', $this->payload([
+            'scheduled_date' => $checkIn->copy()->addDays(3)->toDateString(),
+        ]))->assertCreated();
+    }
+
+    public function test_end_time_must_follow_start_time(): void
+    {
+        $this->postJson('/api/surveys', $this->payload(['scheduled_end_time' => '09:00']))
+            ->assertStatus(422);
+    }
+
+    /** H-1 ditegakkan bila rencana check-in diketahui. */
     public function test_schedule_past_the_deadline_is_rejected(): void
     {
         $checkIn = Carbon::today()->addDays(10);
 
         $this->postJson('/api/surveys', $this->payload([
             'planned_check_in' => $checkIn->toDateString(),
-            // H-1: jauh melewati batas.
-            'scheduled_date' => $checkIn->copy()->subDay()->toDateString(),
+            // Hari check-in sendiri: melewati batas H-1.
+            'scheduled_date' => $checkIn->toDateString(),
         ]))->assertStatus(422);
+
+        $this->postJson('/api/surveys', $this->payload([
+            'planned_check_in' => $checkIn->toDateString(),
+            'scheduled_date' => $checkIn->copy()->subDay()->toDateString(),
+        ]))->assertCreated();
     }
 
     /**
@@ -186,6 +229,7 @@ class SurveyManagementTest extends TestCase
         $this->postJson('/api/surveys', $this->payload([
             'guest_name' => 'Budi Santoso',
             'scheduled_time' => '13:00',
+            'scheduled_end_time' => '14:00',
         ]))->assertCreated();
 
         $this->assertCount(1, $this->getJson('/api/surveys?q=budi')->json('data'));
@@ -233,14 +277,19 @@ class SurveyManagementTest extends TestCase
         $this->patchJson("/api/surveys/{$id}", ['status' => 'Batal Saja'])->assertStatus(422);
     }
 
-    /** Memindahkan jadwal ikut memperbarui sesi, kalau tidak kuota jadi salah. */
-    public function test_rescheduling_updates_the_session(): void
+    /** Pindah jadwal diperiksa ulang terhadap survey LAIN, bukan dirinya sendiri. */
+    public function test_rescheduling_checks_conflicts_excluding_itself(): void
     {
-        $id = $this->postJson('/api/surveys', $this->payload(['scheduled_time' => '10:00']))->json('data.id');
+        $a = $this->postJson('/api/surveys', $this->payload())->json('data.id');
+        $b = $this->postJson('/api/surveys', $this->payload([
+            'guest_name' => 'Budi', 'scheduled_time' => '13:00', 'scheduled_end_time' => '14:00',
+        ]))->json('data.id');
 
-        $this->patchJson("/api/surveys/{$id}", ['scheduled_time' => '13:30'])->assertOk();
+        $this->patchJson("/api/surveys/{$b}", ['scheduled_time' => '10:30'])->assertStatus(422);
 
-        $this->assertSame('Siang', Survey::findOrFail($id)->session);
+        $this->patchJson("/api/surveys/{$a}", ['scheduled_time' => '10:30', 'scheduled_end_time' => '11:30'])
+            ->assertOk()
+            ->assertJsonPath('data.scheduled_end_time', '11:30');
     }
 
     public function test_rescheduling_past_the_deadline_is_rejected(): void
@@ -253,7 +302,7 @@ class SurveyManagementTest extends TestCase
         ]))->json('data.id');
 
         $this->patchJson("/api/surveys/{$id}", [
-            'scheduled_date' => $checkIn->copy()->subDay()->toDateString(),
+            'scheduled_date' => $checkIn->toDateString(),
         ])->assertStatus(422);
     }
 

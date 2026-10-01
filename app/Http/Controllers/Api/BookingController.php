@@ -212,7 +212,7 @@ class BookingController extends Controller
             return $error;
         }
 
-        if ($error = $this->validateSurvey($request, $checkIn)) {
+        if ($error = $this->validateSurvey($request, $item, $checkIn)) {
             return $error;
         }
 
@@ -380,28 +380,25 @@ class BookingController extends Controller
      *
      * Daftar yang dilihat pengunjung bisa sudah basi beberapa menit kemudian —
      * orang lain mengambil slot yang sama, atau prosesnya berlarut sampai
-     * melewati batas H-7. Aturannya sendiri tidak disalin: `SurveySlots` yang
+     * melewati batas H-1. Aturannya sendiri tidak disalin: `SurveySlots` yang
      * sama dipakai untuk menyusun daftar dan untuk memverifikasi pilihan.
      */
-    private function validateSurvey(StoreBookingRequest $request, string $checkIn): ?JsonResponse
+    private function validateSurvey(StoreBookingRequest $request, Item $item, string $checkIn): ?JsonResponse
     {
         if (! $request->filled('survey')) {
             return null;
         }
 
-        $bookable = SurveySlots::isBookable(
+        // Admin mencatat untuk tamu yang menghubungi langsung: tanpa jeda H+2.
+        $rejection = SurveySlots::rejectionFor(
+            $item->category_id,
             $request->input('survey.date'),
-            $request->input('survey.session'),
+            $request->input('survey.start_time'),
+            $request->input('survey.end_time'),
             $checkIn,
+            enforceLeadTime: false,
         );
 
-        if (! $bookable) {
-            return $this->error(
-                'Jadwal survey itu sudah tidak tersedia. Silakan pilih slot lain.',
-                422,
-            );
-        }
-
-        return null;
+        return $rejection === null ? null : $this->error($rejection, 422);
     }
 }

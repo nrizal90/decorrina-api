@@ -39,7 +39,9 @@ class SurveyResource extends JsonResource
             'scheduled_time' => $this->scheduled_time === null
                 ? null
                 : substr((string) $this->scheduled_time, 0, 5),
-            'session' => $this->session,
+            'scheduled_end_time' => $this->scheduled_end_time === null
+                ? null
+                : substr((string) $this->scheduled_end_time, 0, 5),
 
             'pic' => $this->pic === null
                 ? null

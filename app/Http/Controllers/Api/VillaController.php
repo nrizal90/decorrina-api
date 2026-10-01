@@ -270,31 +270,31 @@ class VillaController extends Controller
     }
 
     #[OA\Get(
-        path: '/api/villas/{slug}/survey-slots',
+        path: '/api/villas/{slug}/survey-schedule',
         tags: ['Katalog Publik'],
-        summary: 'Slot survey lokasi yang tersedia (A5)',
+        summary: 'Aturan jadwal survey lokasi (A5)',
         description: <<<'TXT'
-        Jadwal survey yang masih bisa dipilih untuk sebuah rencana check-in.
+        CR-07: tamu memilih tanggal, lalu jam mulai & jam selesai sendiri.
 
-        Slot tidak disimpan sebagai baris di database: sesi (Pagi/Siang) dan
-        aturan tanggalnya ada di config/survey.php, dan yang ditabelkan hanya
-        slot yang sudah dipesan. Batasnya H-7 sebelum check-in dan paling cepat
-        H+2 dari hari ini.
+        Tanpa `date`: hanya batas tanggal (`earliest` H+2, `deadline` H-1
+        sebelum check-in). Dengan `date`: ikut dikembalikan jendela jam villa
+        pada tanggal itu (07:00–20:00 kosong, 12:00–14:00 ada tamu) dan jam
+        yang sudah dipakai survey lain di villa ini.
 
-        `deadline` selalu dikembalikan supaya layar bisa menjelaskan MENGAPA
-        daftarnya kosong ketika check-in sudah terlalu dekat.
+        Hanya panduan tampilan — pilihan diperiksa ulang saat booking dibuat.
         TXT,
         parameters: [
             new OA\Parameter(name: 'slug', in: 'path', required: true, schema: new OA\Schema(type: 'string')),
             new OA\Parameter(name: 'check_in', in: 'query', required: true, schema: new OA\Schema(type: 'string', format: 'date')),
+            new OA\Parameter(name: 'date', in: 'query', description: 'Tanggal survey yang sedang dipilih.', schema: new OA\Schema(type: 'string', format: 'date')),
             new OA\Parameter(name: 'item_id', in: 'query', description: 'Bila diisi, `requires_survey` item itu ikut dikembalikan.', schema: new OA\Schema(type: 'integer')),
         ],
         responses: [
-            new OA\Response(response: 200, description: 'Daftar slot'),
+            new OA\Response(response: 200, description: 'Aturan jadwal survey'),
             new OA\Response(response: 404, description: 'Villa tidak ditemukan', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
         ]
     )]
-    public function surveySlots(SurveySlotRequest $request, string $slug): JsonResponse
+    public function surveySchedule(SurveySlotRequest $request, string $slug): JsonResponse
     {
         $villa = Category::where('slug', $slug)->firstOrFail();
         $checkIn = $request->string('check_in')->toString();
@@ -313,11 +313,24 @@ class VillaController extends Controller
             $requiresSurvey = (bool) $item->requires_survey;
         }
 
+        $day = null;
+
+        if ($request->filled('date')) {
+            $date = $request->string('date')->toString();
+            $day = [
+                'date' => $date,
+                'occupied' => SurveySlots::villaOccupied($villa->id, $date),
+                'window' => SurveySlots::windowFor($villa->id, $date),
+                'taken' => SurveySlots::takenFor($villa->id, $date),
+            ];
+        }
+
         return $this->ok([
             'check_in' => $checkIn,
             'requires_survey' => $requiresSurvey,
+            'earliest' => SurveySlots::earliest()->toDateString(),
             'deadline' => SurveySlots::deadlineFor($checkIn)->toDateString(),
-            'slots' => SurveySlots::availableFor($checkIn),
+            'day' => $day,
         ]);
     }
 

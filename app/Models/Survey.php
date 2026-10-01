@@ -53,6 +53,7 @@ class Survey extends Model
         'planned_check_in',
         'scheduled_date',
         'scheduled_time',
+        'scheduled_end_time',
         'session',
         'pic_user_id',
         'status',
