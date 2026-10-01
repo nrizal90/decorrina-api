@@ -69,6 +69,28 @@ class Survey extends Model
         ];
     }
 
+    /**
+     * Booking batal -> survey-nya yang belum terjadi ikut batal, supaya jamnya
+     * kembali bisa dipilih tamu lain. Survey yang sudah berlangsung (Menunggu
+     * Laporan / Selesai) dibiarkan — itu riwayat kunjungan.
+     *
+     * Dipanggil dari SEMUA jalur pembatalan (admin & scheduler kedaluwarsa);
+     * scheduler memakai mass update, jadi model event tidak bisa diandalkan.
+     *
+     * @param  array<int, int>  $bookingIds
+     */
+    public static function cancelForBookings(array $bookingIds): void
+    {
+        if ($bookingIds === []) {
+            return;
+        }
+
+        static::withoutGlobalScope('tenant')
+            ->whereIn('booking_id', $bookingIds)
+            ->where('status', self::STATUS_TERJADWAL)
+            ->update(['status' => self::STATUS_DIBATALKAN]);
+    }
+
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);

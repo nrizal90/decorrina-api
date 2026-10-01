@@ -209,6 +209,40 @@ class SurveySchedulingTest extends TestCase
         $this->book(['survey' => $this->survey('10:00', '09:00')])->assertStatus(422);
     }
 
+    /** Booking batal -> survey yang belum terjadi ikut batal & jamnya terbuka lagi. */
+    public function test_cancelling_a_booking_cancels_its_pending_survey(): void
+    {
+        $id = $this->book(['survey' => $this->survey('09:00', '10:00')])->json('data.id');
+
+        $this->patchJson("/api/bookings/{$id}/status", ['status' => Booking::STATUS_DIBATALKAN])->assertOk();
+
+        $this->assertSame(Survey::STATUS_DIBATALKAN, Survey::firstOrFail()->status);
+        $this->assertSame([], $this->schedule(['date' => $this->surveyDate()])['day']['taken']);
+    }
+
+    public function test_completed_survey_is_kept_when_its_booking_is_cancelled(): void
+    {
+        $id = $this->book(['survey' => $this->survey()])->json('data.id');
+        Survey::firstOrFail()->update(['status' => Survey::STATUS_SELESAI]);
+
+        $this->patchJson("/api/bookings/{$id}/status", ['status' => Booking::STATUS_DIBATALKAN])->assertOk();
+
+        $this->assertSame(Survey::STATUS_SELESAI, Survey::firstOrFail()->status);
+    }
+
+    public function test_expired_unpaid_booking_cancels_its_survey(): void
+    {
+        $this->withHeader('X-Tenant', 'decorinna')->postJson('/api/public/bookings', $this->booking([
+            'survey' => $this->survey(),
+        ]))->assertCreated();
+
+        Booking::query()->update(['created_at' => now()->subHours(config('booking.pending_expiry_hours') + 1)]);
+        $this->artisan('bookings:expire-pending');
+
+        $this->assertSame(Booking::STATUS_DIBATALKAN, Booking::firstOrFail()->status);
+        $this->assertSame(Survey::STATUS_DIBATALKAN, Survey::firstOrFail()->status);
+    }
+
     public function test_survey_is_not_created_when_the_booking_fails(): void
     {
         // pax di luar kapasitas -> booking ditolak; survey tidak boleh tertinggal.

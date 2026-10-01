@@ -10,6 +10,7 @@ use App\Http\Requests\Booking\UpdateBookingStatusRequest;
 use App\Http\Resources\BookingResource;
 use App\Models\Booking;
 use App\Models\Item;
+use App\Models\Survey;
 use App\Support\AddonPolicy;
 use App\Support\BookingAvailability;
 use App\Support\BookingCreator;
@@ -292,6 +293,10 @@ class BookingController extends Controller
         DB::transaction(function () use ($booking, $target) {
             $booking->update(['status' => $target]);
             Ledger::recordForStatus($booking, $target);
+
+            if ($target === Booking::STATUS_DIBATALKAN) {
+                Survey::cancelForBookings([$booking->id]);
+            }
 
             // Belum ada payment gateway: admin menandai DP/Lunas di sini, jadi
             // di sinilah tamu "sudah bayar" dan berhak atas kode akses (M6).

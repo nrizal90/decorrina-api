@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Booking;
+use App\Models\Survey;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schedule;
@@ -14,11 +15,16 @@ use Illuminate\Support\Facades\Schedule;
 Artisan::command('bookings:expire-pending', function () {
     $hours = (int) config('booking.pending_expiry_hours');
 
-    $count = Booking::withoutGlobalScopes()
+    $ids = Booking::withoutGlobalScopes()
         ->where('source', 'customer')
         ->where('status', Booking::STATUS_MENUNGGU)
         ->where('created_at', '<', now()->subHours($hours))
-        ->update(['status' => Booking::STATUS_DIBATALKAN]);
+        ->pluck('id')
+        ->all();
+
+    $count = Booking::withoutGlobalScopes()->whereKey($ids)->update(['status' => Booking::STATUS_DIBATALKAN]);
+    // Survey-nya ikut batal supaya jamnya terbuka lagi.
+    Survey::cancelForBookings($ids);
 
     if ($count > 0) {
         Log::info('Booking menunggu pembayaran kedaluwarsa dibatalkan', ['count' => $count, 'hours' => $hours]);
