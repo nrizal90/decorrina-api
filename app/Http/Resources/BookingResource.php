@@ -69,6 +69,13 @@ class BookingResource extends JsonResource
                 'subtotal' => $line->subtotal,
             ])->values()),
 
+            // Pengajuan/reschedule terakhir (badge "menunggu persetujuan",
+            // tagihan selisih). NULL bila belum pernah.
+            'reschedule' => $this->whenLoaded(
+                'latestReschedule',
+                fn () => $this->latestReschedule ? new RescheduleResource($this->latestReschedule) : null,
+            ),
+
             'created_at' => $this->created_at,
         ];
     }

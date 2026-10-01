@@ -81,6 +81,25 @@ class Ledger
         return $entries;
     }
 
+    /**
+     * Selisih reschedule booking yang sudah Lunas, saat admin menandainya
+     * dibayar. Dibatasi sisa (total − yang sudah tercatat) supaya tidak pernah
+     * mencatat melebihi total booking.
+     */
+    public static function recordRescheduleDifference(Booking $booking, int $difference): ?LedgerEntry
+    {
+        $alreadyRecorded = (int) LedgerEntry::query()
+            ->income()
+            ->where('booking_id', $booking->id)
+            ->sum('amount');
+
+        $amount = min($difference, max(0, $booking->total - $alreadyRecorded));
+
+        return $amount > 0
+            ? self::income($booking, self::CATEGORY_VILLA, $amount, "Selisih reschedule booking {$booking->kode_booking}")
+            : null;
+    }
+
     private static function income(Booking $booking, string $category, int $amount, string $description): LedgerEntry
     {
         return LedgerEntry::create([

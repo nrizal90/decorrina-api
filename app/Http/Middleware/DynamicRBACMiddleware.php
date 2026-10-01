@@ -39,6 +39,14 @@ class DynamicRBACMiddleware
         'items:photos-store' => 'items:update',
         'items:photos-reorder' => 'items:update',
         'items:photos-destroy' => 'items:update',
+        // Reschedule (A13/B3): satu permission untuk pratinjau, langsung,
+        // dan memutuskan pengajuan tamu. Daftar pengajuan = membaca booking;
+        // menandai selisih dibayar = perubahan pembayaran (buku kas).
+        'bookings:reschedule-preview' => 'bookings:reschedule',
+        'reschedules:approve' => 'bookings:reschedule',
+        'reschedules:reject' => 'bookings:reschedule',
+        'reschedules:index' => 'bookings:index',
+        'reschedules:difference-paid' => 'bookings:update-status',
     ];
 
     public function handle(Request $request, Closure $next): Response

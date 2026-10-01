@@ -62,7 +62,7 @@ class BookingController extends Controller
     public function index(Request $request): JsonResponse
     {
         $bookings = Booking::query()
-            ->with(['item.category', 'guest'])
+            ->with(['item.category', 'guest', 'latestReschedule.oldItem', 'latestReschedule.newItem'])
             ->when($request->filled('q'), function ($query) use ($request) {
                 $term = '%'.$request->string('q').'%';
                 $query->where(fn ($q) => $q
@@ -102,7 +102,7 @@ class BookingController extends Controller
     public function show(Booking $booking): JsonResponse
     {
         return $this->ok(
-            new BookingResource($booking->load(['item.category', 'guest', 'addons.addon'])),
+            new BookingResource($booking->load(['item.category', 'guest', 'addons.addon', 'latestReschedule.oldItem', 'latestReschedule.newItem'])),
         );
     }
 

@@ -15,8 +15,10 @@ use App\Http\Controllers\Api\ItemPhotoController;
 use App\Http\Controllers\Api\LedgerController;
 use App\Http\Controllers\Api\MyBookingController;
 use App\Http\Controllers\Api\PublicBookingController;
+use App\Http\Controllers\Api\RescheduleController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\RoleController;
+use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\SurveyController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\VillaController;
@@ -53,6 +55,10 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     // Riwayat Transaksi (A13) — booking milik akun yang login. Tanpa `rbac`:
     // seperti /auth/me, datanya selalu milik pemanggil sendiri (user_id).
     Route::get('/me/bookings', [MyBookingController::class, 'index']);
+    // Reschedule (A13): tamu mengajukan, admin memutuskan (lihat /reschedules).
+    Route::get('/me/bookings/{booking}/reschedule', [MyBookingController::class, 'reschedule'])->whereNumber('booking');
+    Route::post('/me/bookings/{booking}/reschedule', [MyBookingController::class, 'requestReschedule'])
+        ->whereNumber('booking')->middleware('throttle:10,1,reschedule');
 });
 
 /*
@@ -110,6 +116,10 @@ Route::middleware(['auth:sanctum', 'tenant', 'rbac'])->group(function () {
     Route::get('/roles', [RoleController::class, 'index'])->name('roles:index');
     Route::put('/roles/{role}/permissions', [RoleController::class, 'sync'])->name('roles:sync');
 
+    // Pengaturan tenant (Settings > Kebijakan Operasional).
+    Route::get('/settings', [SettingsController::class, 'index'])->name('settings:index');
+    Route::put('/settings', [SettingsController::class, 'update'])->name('settings:update');
+
     /*
     | Booking (B3, Fase 3). `availability` memakai permission bookings:index
     | karena sifatnya membaca — alias didaftarkan di DynamicRBACMiddleware.
@@ -119,6 +129,14 @@ Route::middleware(['auth:sanctum', 'tenant', 'rbac'])->group(function () {
     Route::get('/bookings/availability', [BookingController::class, 'availability'])->name('bookings:availability');
     Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('bookings:show');
     Route::patch('/bookings/{booking}/status', [BookingController::class, 'updateStatus'])->name('bookings:update-status');
+
+    // Reschedule (B3). Alias permission di DynamicRBACMiddleware.
+    Route::get('/bookings/{booking}/reschedule-preview', [RescheduleController::class, 'preview'])->name('bookings:reschedule-preview');
+    Route::post('/bookings/{booking}/reschedule', [RescheduleController::class, 'store'])->name('bookings:reschedule');
+    Route::get('/reschedules', [RescheduleController::class, 'index'])->name('reschedules:index');
+    Route::post('/reschedules/{reschedule}/approve', [RescheduleController::class, 'approve'])->name('reschedules:approve');
+    Route::post('/reschedules/{reschedule}/reject', [RescheduleController::class, 'reject'])->name('reschedules:reject');
+    Route::post('/reschedules/{reschedule}/difference-paid', [RescheduleController::class, 'differencePaid'])->name('reschedules:difference-paid');
 
     /*
     | Akuntansi & Keuangan (B9, Fase 7). Satu endpoint baca untuk tiga tab

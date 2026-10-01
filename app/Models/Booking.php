@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -112,6 +113,17 @@ class Booking extends Model
             'dp_minimum' => 'integer',
             'benefit_shown_at' => 'datetime',
         ];
+    }
+
+    public function reschedules(): HasMany
+    {
+        return $this->hasMany(Reschedule::class)->withoutGlobalScope('tenant');
+    }
+
+    /** Pengajuan/reschedule terakhir — untuk badge di papan B3 & Riwayat. */
+    public function latestReschedule(): HasOne
+    {
+        return $this->hasOne(Reschedule::class)->withoutGlobalScope('tenant')->latestOfMany();
     }
 
     public function item(): BelongsTo
