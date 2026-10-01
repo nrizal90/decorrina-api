@@ -64,6 +64,27 @@ class PublicBookingTest extends TestCase
 
     // ------------------------------------------------------------ dasar
 
+    /**
+     * Throttle katalog dan throttle buat booking HARUS punya penghitung
+     * sendiri. Tanpa prefix, Laravel memakai kunci domain|IP yang sama untuk
+     * semua throttle:X,Y, jadi tamu yang bolak-balik memilih tanggal
+     * kehabisan jatah booking (10/menit) sebelum sempat membayar.
+     */
+    public function test_browsing_dates_does_not_use_up_the_booking_rate_limit(): void
+    {
+        $checkIn = Carbon::today()->addDays(20);
+
+        foreach (range(1, 12) as $i) {
+            $this->withHeader('X-Tenant', 'decorinna')->getJson('/api/villas/villa-de-corrinna/quote?'.http_build_query([
+                'item_id' => $this->item()->id,
+                'check_in' => $checkIn->toDateString(),
+                'check_out' => $checkIn->copy()->addDays(2)->toDateString(),
+            ]))->assertOk();
+        }
+
+        $this->book()->assertCreated();
+    }
+
     /** Audit T-01b/T-08: customer tanpa tenant TIDAK boleh menyentuh jalur admin. */
     public function test_customer_cannot_use_admin_booking_endpoints(): void
     {

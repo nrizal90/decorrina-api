@@ -43,7 +43,7 @@ Route::get('/health', HealthController::class);
 // Throttle (audit T-06): login dikunci per email+IP (RateLimiter 'login' di
 // AppServiceProvider) supaya brute force satu akun tertahan tanpa mengunci
 // seluruh kantor yang berbagi IP; register cukup per IP.
-Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:3,10');
+Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:3,10,register');
 Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
 
 Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
@@ -69,7 +69,10 @@ Route::middleware('tenant.public')->group(function () {
     // anonim memesan lewat layar yang sama, jadi menaruhnya di belakang
     // auth:sanctum akan mematikan alur "lanjutkan tanpa akun".
     // throttle: endpoint ini menghitung per malam / per slot (audit T-04).
-    Route::middleware('throttle:60,1')->group(function () {
+    // Argumen ketiga = prefix kunci. Tanpa prefix, Laravel memakai kunci
+    // domain|IP yang SAMA untuk semua throttle:X,Y — klik-klik tanggal di
+    // katalog ikut menghabiskan jatah buat booking/daftar/cek booking.
+    Route::middleware('throttle:60,1,catalog')->group(function () {
         Route::get('/villas/{slug}/availability', [VillaController::class, 'availability']);
         Route::get('/villas/{slug}/quote', [VillaController::class, 'quote']);
         Route::get('/villas/{slug}/survey-schedule', [VillaController::class, 'surveySchedule']);
@@ -83,12 +86,12 @@ Route::middleware('tenant.public')->group(function () {
     | memanggilnya — tanpa itu, satu skrip bisa memenuhi kalender.
     */
     Route::post('/public/bookings', [PublicBookingController::class, 'store'])
-        ->middleware('throttle:10,1');
+        ->middleware('throttle:10,1,public-booking');
 
     // Cek status booking (A15). Throttle lebih ketat: ini pintu yang bisa
     // dipakai menebak kode + kontak orang lain.
     Route::get('/public/bookings/lookup', [PublicBookingController::class, 'lookup'])
-        ->middleware('throttle:6,1');
+        ->middleware('throttle:6,1,lookup');
 });
 
 /*

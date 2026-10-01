@@ -57,8 +57,12 @@ class MyBookingTest extends TestCase
         // Anonim dulu, dengan nomor HP yang sama — tidak boleh ikut terklaim.
         $this->book(20);
 
-        Sanctum::actingAs($rina);
+        // Token sungguhan seperti dari browser, bukan Sanctum::actingAs — rute
+        // publik membaca user lewat auth('sanctum') tanpa middleware auth.
+        $this->withToken($rina->createToken('test')->plainTextToken);
         $this->book(30);
+        $this->withoutToken();
+        Sanctum::actingAs($rina);
 
         $this->assertSame($rina->id, Booking::latest('id')->first()->user_id);
 
