@@ -162,6 +162,10 @@ class AuthRolePermissionSeeder extends Seeder
             'addons:store' => 'Tambah add-on',
             'addons:update' => 'Ubah add-on',
             'addons:destroy' => 'Hapus add-on',
+            'holidays:index' => 'Lihat daftar holiday season',
+            'holidays:store' => 'Tambah holiday season',
+            'holidays:update' => 'Ubah holiday season',
+            'holidays:destroy' => 'Hapus holiday season',
 
             // Booking (Fase 3)
             'bookings:index' => 'Lihat daftar booking',

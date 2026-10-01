@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
             AuthRolePermissionSeeder::class,
             // Bergantung pada tenant "decorinna" yang dibuat seeder di atas.
             MasterDataSeeder::class,
+            HolidaySeasonSeeder::class,
         ]);
     }
 }

@@ -195,6 +195,7 @@ class VillaController extends Controller
             'cap_max' => $item->cap_max,
             'price_weekday' => $item->price_weekday,
             'price_weekend' => $item->price_weekend,
+            'price_holiday' => $item->price_holiday,
             'booked_nights' => $nightsByItem[$item->id]->unique()->sort()->values(),
         ]);
 

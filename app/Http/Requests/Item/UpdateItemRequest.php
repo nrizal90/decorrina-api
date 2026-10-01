@@ -29,6 +29,7 @@ class UpdateItemRequest extends FormRequest
             'cap_max' => ['sometimes', 'required_with:cap_min', 'integer', 'min:0', 'gte:cap_min'],
             'price_weekday' => ['sometimes', 'integer', 'min:0'],
             'price_weekend' => ['sometimes', 'integer', 'min:0'],
+            'price_holiday' => ['nullable', 'integer', 'min:0'],
             'payment_mode' => ['sometimes', Rule::in(Item::PAYMENT_MODES)],
             'dp_minimum' => [
                 'nullable',

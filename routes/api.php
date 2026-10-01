@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\FacilityController;
 use App\Http\Controllers\Api\GuestController;
 use App\Http\Controllers\Api\HealthController;
+use App\Http\Controllers\Api\HolidaySeasonController;
 use App\Http\Controllers\Api\ItemController;
 use App\Http\Controllers\Api\ItemPhotoController;
 use App\Http\Controllers\Api\LedgerController;
@@ -171,6 +172,12 @@ Route::middleware(['auth:sanctum', 'tenant', 'rbac'])->group(function () {
         Route::post('/facilities', [FacilityController::class, 'store'])->name('facilities:store');
         Route::match(['put', 'patch'], '/facilities/{facility}', [FacilityController::class, 'update'])->name('facilities:update');
         Route::delete('/facilities/{facility}', [FacilityController::class, 'destroy'])->name('facilities:destroy');
+
+        // Holiday season (tarif libur) — dibaca BookingPricing.
+        Route::get('/holiday-seasons', [HolidaySeasonController::class, 'index'])->name('holidays:index');
+        Route::post('/holiday-seasons', [HolidaySeasonController::class, 'store'])->name('holidays:store');
+        Route::match(['put', 'patch'], '/holiday-seasons/{holidaySeason}', [HolidaySeasonController::class, 'update'])->name('holidays:update');
+        Route::delete('/holiday-seasons/{holidaySeason}', [HolidaySeasonController::class, 'destroy'])->name('holidays:destroy');
 
         // Add-on
         Route::get('/addons', [AddonController::class, 'index'])->name('addons:index');

@@ -29,6 +29,8 @@ class StoreItemRequest extends FormRequest
             'cap_max' => ['required', 'integer', 'min:0', 'gte:cap_min'],
             'price_weekday' => ['required', 'integer', 'min:0'],
             'price_weekend' => ['required', 'integer', 'min:0'],
+            // Kosong = malam libur memakai tarif weekend.
+            'price_holiday' => ['nullable', 'integer', 'min:0'],
             'payment_mode' => ['required', Rule::in(Item::PAYMENT_MODES)],
             // Wajib bila metode pembayaran melibatkan DP — cocok dengan
             // `showDpMinimum` di ItemForm.tsx.

@@ -68,6 +68,7 @@ class BookingCreator
                 // Snapshot harga & kebijakan pembayaran item saat ini.
                 'price_weekday' => $item->price_weekday,
                 'price_weekend' => $item->price_weekend,
+                'price_holiday' => $item->price_holiday,
                 'subtotal_item' => $stay['subtotal'],
                 'subtotal_addons' => $addonPricing['subtotal'],
                 'total' => $stay['subtotal'] + $addonPricing['subtotal'],

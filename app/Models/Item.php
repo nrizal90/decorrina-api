@@ -33,6 +33,7 @@ class Item extends Model
         'cap_max',
         'price_weekday',
         'price_weekend',
+        'price_holiday',
         'payment_mode',
         'dp_minimum',
         'requires_survey',
@@ -46,6 +47,7 @@ class Item extends Model
             'cap_max' => 'integer',
             'price_weekday' => 'integer',
             'price_weekend' => 'integer',
+            'price_holiday' => 'integer',
             'dp_minimum' => 'integer',
             'requires_survey' => 'boolean',
         ];

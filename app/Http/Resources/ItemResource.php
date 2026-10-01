@@ -30,6 +30,7 @@ class ItemResource extends JsonResource
             'cap_max' => $this->cap_max,
             'price_weekday' => $this->price_weekday,
             'price_weekend' => $this->price_weekend,
+            'price_holiday' => $this->price_holiday,
             'payment_mode' => $this->payment_mode,
             'dp_minimum' => $this->dp_minimum,
             'requires_survey' => $this->requires_survey,
