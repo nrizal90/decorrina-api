@@ -175,7 +175,9 @@ class MasterDataSeeder extends Seeder
                 'name' => 'Late Checkout',
                 'price' => 150_000,
                 'unit' => 'jam',
-                'status' => 'Aktif',
+                // CR-05 (klarifikasi klien 27 Sep 2026): late checkout dikeluarkan
+                // dari sistem. Dinonaktifkan, bukan dihapus — siapa tahu kembali.
+                'status' => 'Nonaktif',
                 'description' => 'Perpanjangan waktu checkout per jam.',
                 'links' => ['villa-de-corrinna', 'villa-cendana-wangi'],
             ],

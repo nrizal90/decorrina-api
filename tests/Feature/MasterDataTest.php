@@ -77,8 +77,8 @@ class MasterDataTest extends TestCase
             ->assertJsonCount(6, 'data.facilities')
             // Hanya item Aktif — Kamar Standard tidak ikut.
             ->assertJsonCount(2, 'data.items')
-            // Hanya add-on Aktif — Paket BBQ (Nonaktif) tidak ikut.
-            ->assertJsonCount(2, 'data.addons');
+            // Hanya add-on Aktif — Paket BBQ & Late Checkout (Nonaktif) tidak ikut.
+            ->assertJsonCount(1, 'data.addons');
     }
 
     // ------------------------------------------------- filter tanggal (A2)
