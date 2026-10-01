@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\HolidaySeasonController;
 use App\Http\Controllers\Api\ItemController;
 use App\Http\Controllers\Api\ItemPhotoController;
 use App\Http\Controllers\Api\LedgerController;
+use App\Http\Controllers\Api\MyBookingController;
 use App\Http\Controllers\Api\PublicBookingController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\RoleController;
@@ -48,6 +49,10 @@ Route::post('/auth/login', [AuthController::class, 'login'])->middleware('thrott
 Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/me', [AuthController::class, 'me']);
+
+    // Riwayat Transaksi (A13) — booking milik akun yang login. Tanpa `rbac`:
+    // seperti /auth/me, datanya selalu milik pemanggil sendiri (user_id).
+    Route::get('/me/bookings', [MyBookingController::class, 'index']);
 });
 
 /*

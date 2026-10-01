@@ -59,6 +59,9 @@ class BookingCreator
             $booking = Booking::create([
                 'item_id' => $item->id,
                 'guest_id' => $guest->id,
+                // Akun yang memesan sambil login -> muncul di Riwayat Transaksi
+                // (A13). NULL untuk booking anonim & booking manual admin.
+                'user_id' => $user?->id,
                 'kode_booking' => BookingCode::generate(app('currentTenantId')),
                 'check_in' => $checkIn,
                 'check_out' => $checkOut,
